@@ -10,21 +10,23 @@ class BaseAgent extends EventEmitter {
     constructor(name, config = {}) {
         super();
         
+        // 안전한 config 초기화
+        this.config = config || {};
+        
         this.id = uuidv4();
         this.name = name;
-        this.config = config;
         this.status = 'initialized';
         this.startTime = new Date();
         this.memory = new Map();
         this.context = {};
         
         // AI 모델 설정
-        this.aiProvider = config.aiProvider || 'openai';
-        this.model = config.model || 'gpt-4';
-        this.temperature = config.temperature || 0.1;
+        this.aiProvider = this.config.aiProvider || 'openai';
+        this.model = this.config.model || 'gpt-4';
+        this.temperature = this.config.temperature || 0.1;
         
         // 로깅 설정
-        this.logLevel = config.logLevel || 'info';
+        this.logLevel = this.config.logLevel || 'info';
         this.logger = this.createLogger();
         
         // 성능 메트릭
@@ -291,14 +293,14 @@ class BaseAgent extends EventEmitter {
      */
     getStatus() {
         return {
-            id: this.id,
-            name: this.name,
-            status: this.status,
-            uptime: Date.now() - this.startTime.getTime(),
-            metrics: this.metrics,
-            memorySize: this.memory.size,
-            contextKeys: Object.keys(this.context),
-            lastLogs: this.recall('logs')?.slice(-5) || []
+            id: this.id || 'unknown',
+            name: this.name || 'unknown',
+            status: this.status || 'unknown',
+            uptime: this.startTime ? Date.now() - this.startTime.getTime() : 0,
+            metrics: this.metrics || {},
+            memorySize: this.memory ? this.memory.size : 0,
+            contextKeys: this.context ? Object.keys(this.context) : [],
+            lastLogs: this.recall ? (this.recall('logs')?.slice(-5) || []) : []
         };
     }
 

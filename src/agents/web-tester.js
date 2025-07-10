@@ -7,7 +7,7 @@ const { BaseAgent } = require('./base-agent');
 const { chromium } = require('playwright');
 
 class WebTesterAgent extends BaseAgent {
-    constructor(config) {
+    constructor(config = {}) {
         super('WebTester', config);
         
         this.browser = null;
@@ -20,7 +20,7 @@ class WebTesterAgent extends BaseAgent {
             navigationTimeout: 15000,
             viewport: { width: 1280, height: 720 },
             headless: config.headless !== false, // 기본값은 headless
-            ...config.testConfig
+            ...(config.testConfig || {})
         };
 
         this.log('Web Tester Agent initialized');
