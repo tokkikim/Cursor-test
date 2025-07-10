@@ -22,7 +22,10 @@
     "test:coverage": "jest --coverage",
     "agent:start": "node src/agents/orchestrator.js",
     "docker:build": "docker build -t agent-qa .",
-    "docker:run": "docker run -p 3000:3000 agent-qa"
+    "docker:run": "docker run -p 3000:3000 agent-qa",
+    "export": "next build && next export",
+    "deploy:vercel": "vercel --prod",
+    "deploy:netlify": "netlify deploy --prod"
   },
   "dependencies": {
     "next": "^14.0.0",
