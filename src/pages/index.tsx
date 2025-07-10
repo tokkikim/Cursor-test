@@ -17,10 +17,10 @@ const HomePage: React.FC = () => {
   });
 
   const [agents, setAgents] = useState([
-    { id: 1, name: 'Quality Inspector', status: 'active', lastActivity: new Date() },
-    { id: 2, name: 'Bug Hunter', status: 'active', lastActivity: new Date() },
-    { id: 3, name: 'Performance Analyst', status: 'idle', lastActivity: new Date() },
-    { id: 4, name: 'Compliance Guardian', status: 'active', lastActivity: new Date() }
+    { id: 1, name: 'Quality Inspector', status: 'active' as const, lastActivity: new Date() },
+    { id: 2, name: 'Bug Hunter', status: 'active' as const, lastActivity: new Date() },
+    { id: 3, name: 'Performance Analyst', status: 'idle' as const, lastActivity: new Date() },
+    { id: 4, name: 'Compliance Guardian', status: 'active' as const, lastActivity: new Date() }
   ]);
 
   useEffect(() => {
