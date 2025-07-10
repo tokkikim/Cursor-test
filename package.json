@@ -1,0 +1,71 @@
+{
+  "name": "agent-qa",
+  "version": "0.1.0",
+  "description": "AI-powered Quality Assurance automation platform for web, desktop, and mobile applications",
+  "keywords": [
+    "qa",
+    "testing",
+    "automation",
+    "ai",
+    "agent",
+    "quality-assurance",
+    "multi-platform"
+  ],
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "agent:start": "node src/agents/orchestrator.js",
+    "docker:build": "docker build -t agent-qa .",
+    "docker:run": "docker run -p 3000:3000 agent-qa"
+  },
+  "dependencies": {
+    "next": "^14.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "typescript": "^5.0.0",
+    "@types/react": "^18.2.0",
+    "@types/node": "^20.0.0",
+    "playwright": "^1.40.0",
+    "tailwindcss": "^3.3.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/jest-dom": "^6.1.0",
+    "eslint": "^8.53.0",
+    "eslint-config-next": "^14.0.0",
+    "prettier": "^3.0.0",
+    "@types/jest": "^29.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agent-qa/agent-qa.git"
+  },
+  "bugs": {
+    "url": "https://github.com/agent-qa/agent-qa/issues"
+  },
+  "homepage": "https://agent-qa.com",
+  "license": "MIT",
+  "author": {
+    "name": "Agent.QA Team",
+    "email": "contact@agent-qa.com",
+    "url": "https://agent-qa.com"
+  },
+  "contributors": [
+    {
+      "name": "Community Contributors",
+      "url": "https://github.com/agent-qa/agent-qa/graphs/contributors"
+    }
+  ]
+}
