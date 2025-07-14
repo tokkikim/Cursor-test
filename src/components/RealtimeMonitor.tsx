@@ -12,7 +12,7 @@ const RealtimeMonitor: React.FC = () => {
   const [metrics, setMetrics] = useState<MetricData[]>([
     { name: 'API 응답시간', value: 245, unit: 'ms', status: 'good', trend: 'stable' },
     { name: 'CPU 사용률', value: 34, unit: '%', status: 'good', trend: 'down' },
-    { name: ' 메모리 사용률', value: 67, unit: '%', status: 'warning', trend: 'up' },
+    { name: '메모리 사용률', value: 67, unit: '%', status: 'warning', trend: 'up' },
     { name: '활성 테스트', value: 12, unit: '개', status: 'good', trend: 'stable' }
   ]);
 
