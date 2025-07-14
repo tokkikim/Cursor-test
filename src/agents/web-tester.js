@@ -36,8 +36,7 @@ class WebTesterAgent extends BaseAgent {
             }
 
             this.browser = await chromium.launch({
-                headless: this.testConfig.headless,
-                viewport: this.testConfig.viewport
+                headless: this.testConfig.headless
             });
 
             this.context = await this.browser.newContext({
