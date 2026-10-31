@@ -175,6 +175,29 @@ input[type="text"] {
 }
 .toast[hidden] { display: none; }
 .toast button { background: none; border: none; color: var(--lantern); font-weight: 700; padding: 0; white-space: nowrap; }
+.admin {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 9;
+  background: rgba(7, 10, 22, 0.94); border-top: 1px solid var(--line);
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); display: grid; gap: 8px; font-size: 0.82rem;
+}
+.admin[hidden] { display: none; }
+body.admin-on .bar, body.admin-on .demo { display: none; }
+body.admin-on .caption { bottom: 300px; }
+body.admin-on .toast { bottom: 300px; }
+.adm-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.adm-row button { background: rgba(255,255,255,0.06); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; font-size: 0.8rem; }
+.adm-row button:hover { border-color: var(--lantern); }
+.adm-row input { font: inherit; color: var(--ink); background: rgba(255,255,255,0.06); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; width: 84px; }
+.adm-row .adm-cap input { width: 200px; }
+.adm-row label { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 0.8rem; }
+.adm-title { font-family: var(--font-display); font-size: 1rem; }
+.adm-time { font-variant-numeric: tabular-nums; color: var(--lantern); min-width: 120px; }
+.adm-gap { flex: 1; }
+.adm-tl { width: 100%; height: 112px; display: block; background: rgba(255,255,255,0.03); border-radius: 6px; cursor: crosshair; touch-action: none; }
+.adm-help { margin: 0; color: var(--muted); font-size: 0.75rem; }
+.adm-io { display: grid; gap: 6px; }
+.adm-io[hidden] { display: none; }
+.adm-io textarea { font-family: ui-monospace, monospace; font-size: 0.75rem; color: var(--ink); background: rgba(255,255,255,0.05); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
 .nogl { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; z-index: 30; background: var(--night); }
 .nogl[hidden] { display: none; }
 
@@ -227,6 +250,7 @@ input[type="text"] {
   </label>
   <label for="music-file" class="filepick">내 음악 파일<input type="file" id="music-file" accept="audio/*"></label>
   <label for="face-file" class="filepick">얼굴 사진<input type="file" id="face-file" accept="image/*" multiple></label>
+  <button type="button" id="btn-admin" class="filepick">관리자</button>
   <label for="chapter" style="display:flex;gap:6px;align-items:center">장면
     <select id="chapter"><option value="" disabled selected>이동</option></select>
   </label>
@@ -312,6 +336,39 @@ input[type="text"] {
     <button type="button" class="cta" id="share-invite">친구 부르는 링크 복사</button>
   </div>
 </div>
+
+<section class="admin" id="admin" hidden aria-label="관리자 타임라인 편집기">
+  <div class="adm-row">
+    <strong class="adm-title">타임라인 편집</strong>
+    <button type="button" id="adm-play">재생</button>
+    <button type="button" id="adm-back">5초 뒤로</button>
+    <span id="adm-time" class="adm-time">0:00.0</span>
+    <button type="button" id="adm-zout" aria-label="축소">−</button>
+    <button type="button" id="adm-zin" aria-label="확대">+</button>
+    <span class="adm-gap"></span>
+    <label for="adm-song">노래 시작(초) <input type="number" id="adm-song" step="0.1" min="0"></label>
+    <button type="button" id="adm-song-here">지금 위치를 노래 시작으로</button>
+    <button type="button" id="adm-export">내보내기</button>
+    <button type="button" id="adm-import">가져오기</button>
+    <button type="button" id="adm-reset">처음 상태로</button>
+    <button type="button" id="adm-close">닫기</button>
+  </div>
+  <canvas id="tl" class="adm-tl" aria-label="장면과 노래 파형이 보이는 타임라인. 클릭하면 그 시점으로 이동하고, 장면 경계를 끌면 시작 시점이 바뀐다"></canvas>
+  <div class="adm-row">
+    <span>선택한 장면 <b id="adm-scene">-</b></span>
+    <label for="adm-at">시작(초) <input type="number" id="adm-at" step="0.1" min="0"></label>
+    <button type="button" id="adm-here">지금 위치에서 시작 (C)</button>
+    <button type="button" id="adm-preview">이 장면부터 보기</button>
+    <label for="adm-cap-a" class="adm-cap">자막 <input type="text" id="adm-cap-a"></label>
+    <label for="adm-cap-b" class="adm-cap">작은 자막 <input type="text" id="adm-cap-b"></label>
+  </div>
+  <p class="adm-help">스페이스: 재생/일시정지 · C: 선택한 장면을 지금 위치에서 시작하고 다음 장면 선택 · ←/→: 0.1초 이동 (Shift: 1초) · ↑/↓: 장면 선택 · 장면 경계를 끌어서 조정 · Ctrl+휠: 확대</p>
+  <div class="adm-io" id="adm-io" hidden>
+    <label for="adm-json">시간표 JSON</label>
+    <textarea id="adm-json" rows="8" spellcheck="false"></textarea>
+    <div class="adm-row"><button type="button" id="adm-io-apply">이 내용으로 적용</button><button type="button" id="adm-io-copy">복사</button><button type="button" id="adm-io-close">닫기</button></div>
+  </div>
+</section>
 
 <div class="toast" id="toast" role="status" hidden><span id="toast-text"></span><button type="button" id="toast-btn" hidden></button></div>
 <div class="nogl" id="nogl" hidden><p>이 브라우저에서는 3D 그래픽(WebGL)을 쓸 수 없어서 쇼를 보여 드릴 수 없어요.</p></div>

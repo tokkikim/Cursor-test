@@ -3,6 +3,7 @@ import { Fleet } from './fleet.js';
 import { Music } from './music.js';
 import { EPISODES } from './episodes.js';
 import { loadPortraits } from './film.js';
+import { initAdmin, applyOverrides, capOverride } from './admin.js';
 import { SHAPES, MILESTONES, shapeFor } from './formations.js';
 
 let ep = EPISODES.yunseul;
@@ -50,6 +51,7 @@ let mode = 'lobby';
 let showT0 = 0, useAudioClock = false, sceneIdx = -1, show = null, snapshot = null;
 let nextShowAt = Date.now() + DEMO_FIRST_WAIT;
 let spotsLeft = 2;
+let paused = false, pausedAt = 0, vclock = 0, adminOpen = false;
 const music = new Music();
 
 /* ---------- world ---------- */
@@ -66,7 +68,7 @@ const lobbyCtx = () => ({ me, lobby: true, n: fmt(baseCount + (me.launched ? 1 :
 const participants = def => fleet.N - ((!me.launched || (def.spot && me.spot)) ? 1 : 0);
 function enterLobbyLayout(instant) {
   const def = ep.defs.pad;
-  fleet.setScene(def, def.build(participants(def), lobbyCtx()), now(), me, { instant, slot: 8 });
+  fleet.setScene(def, def.build(participants(def), lobbyCtx()), vclock, me, { instant, slot: 8 });
   if (pairNum && me.launched && fleet.N > 2) placeBesideFriend();
 }
 function placeBesideFriend() {
@@ -87,7 +89,9 @@ function shot() {
   const id = ep.SCENES[sceneIdx].id;
   return id === 'pad' || id === 'approach' || id === 'land' ? 'lobby' : 'show';
 }
-function showTime() { return useAudioClock ? music.ctx.currentTime - showT0 : now() - showT0; }
+function showTime() { if (paused) return pausedAt; return useAudioClock ? music.ctx.currentTime - showT0 : now() - showT0; }
+function pauseShow() { if (mode !== 'show' || paused) return; pausedAt = Math.max(0, showTime()); paused = true; if (music.ctx) music.ctx.suspend(); }
+function resumeShow() { if (!paused) return; paused = false; if (useAudioClock) music.ctx.resume(); else showT0 = now() - pausedAt; }
 function buildShowState() {
   const count = baseCount + (me.launched ? 1 : 0);
   const pool = SKY_WISHES.slice().sort(() => rand() - 0.5);
@@ -110,7 +114,10 @@ function startShow() {
     nextShowAt = Date.now() + DEMO_GAP;
     return;
   }
-  if (ep.dynamic) { ep.prepare(music.custom.buffer); music.setCustom(music.custom.buffer, ep.customFrom); delete eventsCache[ep.id]; fillChapters(); }
+  if (ep.dynamic) { ep.prepare(music.custom.buffer); delete eventsCache[ep.id]; }
+  applyOverrides(ep);
+  if (music.custom) music.setCustom(music.custom.buffer, ep.customFrom);
+  fillChapters();
   const events = eventsCache[ep.id] || (eventsCache[ep.id] = ep.arrange());
   show = buildShowState();
   if (music.running()) { const at = music.ctx.currentTime + 0.4; music.startShow(at, events); showT0 = at; useAudioClock = true; }
@@ -127,14 +134,15 @@ function enterScene(k, instant) {
   const sc = ep.SCENES[k], def = ep.defs[sc.id];
   if (def.keep && instant) {
     const parent = ep.defs[def.keep];
-    fleet.setScene(parent, parent.build(participants(parent), show), now(), me, { instant: true });
+    fleet.setScene(parent, parent.build(participants(parent), show), vclock, me, { instant: true });
   }
   const shape = def.keep ? null : def.build(participants(def), show);
-  fleet.setScene(def, shape, now(), me, { instant, slot: sc.end - sc.at, spot: def.spot ? ep.spotAt(show) : null });
+  fleet.setScene(def, shape, vclock, me, { instant, slot: sc.end - sc.at, spot: def.spot ? ep.spotAt(show) : null });
   sceneIdx = k;
   world.setShot(shot());
 }
 function endShow() {
+  if (paused) { paused = false; if (music.ctx) music.ctx.resume(); }
   mode = 'lobby';
   sceneIdx = -1;
   music.startLobby();
@@ -148,13 +156,14 @@ function endShow() {
   if (fleet.N !== visualN()) fleet.setCount(visualN());
   enterLobbyLayout(false);
   world.setShot('lobby');
-  nextShowAt = Date.now() + DEMO_GAP;
+  nextShowAt = Date.now() + (adminOpen ? 1e12 : DEMO_GAP);
   if (snapshot && snapshot.launched) toast('오늘의 하늘이 카드로 만들어졌어요', '보기', openShare);
 }
 function seekTo(st) {
   if (mode !== 'show') startShow();
   st = Math.max(0, Math.min(ep.SHOW_LEN - 1, st));
   if (useAudioClock) { music.seek(st); showT0 = music.showT0; } else showT0 = now() - st;
+  if (paused) pausedAt = st;
   enterScene(sceneAt(st), true);
   world.snap();
 }
@@ -176,8 +185,11 @@ const fx = { abs: 0, pulse: 0, beatLen: 1, soloIdx: 0, solo: [0, 0, 0], pos: nul
 const pt = { x: 0, y: 0, visible: false };
 let last = now();
 function frame() {
-  const t = now(), dt = Math.min(0.05, t - last); last = t;
-  if (mode === 'lobby' && Date.now() >= nextShowAt) startShow();
+  const t0 = now(), rdt = Math.min(0.05, t0 - last); last = t0;
+  const dt = paused ? 0 : rdt;
+  vclock += dt;
+  const t = vclock;
+  if (mode === 'lobby' && !adminOpen && Date.now() >= nextShowAt) startShow();
   let st = t;
   if (mode === 'show') {
     const abs = showTime();
@@ -196,7 +208,7 @@ function frame() {
       fx.shapeKey = show.shapeKey; fx.wishes = show.wishes; fx.scene = show.scene;
       fx.soloIdx = show.soloIdx;
       fx.solo[0] = fleet.pos[3 * fx.soloIdx]; fx.solo[1] = fleet.pos[3 * fx.soloIdx + 1]; fx.solo[2] = fleet.pos[3 * fx.soloIdx + 2];
-      const cap = ep.defs[sc.id].cap ? ep.defs[sc.id].cap(st, show) : null;
+      const cap = capOverride(ep.id, sc.id) || (ep.defs[sc.id].cap ? ep.defs[sc.id].cap(st, show) : null);
       setCaption(cap ? cap[0] : '', cap ? cap[1] : '');
       $('progress-fill').style.width = Math.min(100, Math.max(0, abs) / ep.SHOW_LEN * 100) + '%';
       if (sc.id === ep.snapScene && !snapshot && t - fleet.t0 > fleet.T + 3) takeSnapshot();
@@ -523,5 +535,36 @@ updateHud();
 refreshShop();
 updateSoundBtn();
 requestAnimationFrame(frame);
+
+/* ---------- operator timeline editor ---------- */
+const DEFAULT_AT = {}, DEFAULT_SONG = {};
+Object.values(EPISODES).forEach(e => { DEFAULT_AT[e.id] = Object.fromEntries(e.SCENES.map(s => [s.id, s.at])); DEFAULT_SONG[e.id] = e.customFrom; });
+const dummyShow = () => ({ me, n: fmt(baseCount), count: baseCount, shapeKey: shapeFor(baseCount), wishes: [{ text: '', mine: false }, { text: '', mine: false }, { text: '', mine: false }], scene: { text: '', mine: false, from: '누군가' }, soloIdx: 0 });
+const resync = () => { if (mode === 'show') { const k = sceneAt(Math.max(0, showTime())); if (k !== sceneIdx) enterScene(k, false); } fillChapters(); };
+const admin = initAdmin({
+  ep: () => ep, music: () => music, toast,
+  time: () => (mode === 'show' ? Math.max(0, showTime()) : 0),
+  paused: () => paused || mode !== 'show',
+  play: () => { wakeAudio(); if (mode !== 'show') startShow(); else resumeShow(); },
+  pause: pauseShow,
+  seek: t => { wakeAudio(); seekTo(t); },
+  changed: resync,
+  songMoved: v => { if (music.custom) { music.setCustom(music.custom.buffer, v); if (mode === 'show') music.playCustom(showTime()); } },
+  defaultCap: id => { const d = ep.defs[id]; try { return d && d.cap ? d.cap(5, show || dummyShow()) : null; } catch (e) { return null; } },
+  reset: () => {
+    if (ep.dynamic && music.custom) ep.prepare(music.custom.buffer);
+    else { ep.SCENES.forEach(s => { if (DEFAULT_AT[ep.id][s.id] != null) s.at = DEFAULT_AT[ep.id][s.id]; }); ep.SCENES.sort((a, b) => a.at - b.at); ep.SCENES.forEach((s, i) => { s.end = i + 1 < ep.SCENES.length ? ep.SCENES[i + 1].at : ep.SHOW_LEN; }); ep.customFrom = DEFAULT_SONG[ep.id]; }
+    resync();
+    if (music.custom) { music.setCustom(music.custom.buffer, ep.customFrom); if (mode === 'show') music.playCustom(showTime()); }
+  },
+  opened: () => {
+    adminOpen = true; nextShowAt = Date.now() + 1e12;
+    wakeAudio();
+    if (mode !== 'show') { startShow(); if (mode === 'show') { seekTo(0); pauseShow(); } }
+  },
+  closed: () => { adminOpen = false; if (paused) resumeShow(); if (mode === 'lobby') nextShowAt = Date.now() + DEMO_GAP; }
+});
+$('btn-admin').addEventListener('click', () => admin.open());
+if (location.hash === '#admin') admin.open();
 
 window.__sky = { startShow, seekTo, setEpisode: id => { const s = $('episode'); s.value = id; s.dispatchEvent(new Event('change')); }, state: () => ({ mode, ep: ep.id, scene: sceneIdx >= 0 ? ep.SCENES[sceneIdx].id : null, st: mode === 'show' ? showTime() : 0, T: fleet.T, maxD: fleet.maxD }) };
