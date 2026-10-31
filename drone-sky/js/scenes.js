@@ -429,7 +429,7 @@ export const DEFS = {
     dyn(i, x, y, z, tag, prm, st, o) { o[0] = x + Math.sin(st * 0.15 + hash(i) * 6) * 0.25 + C[0]; o[1] = y + Math.cos(st * 0.12 + hash(i) * 6) * 0.25 + C[1] + 2; o[2] = z + C[2]; },
     color(i, tag, prm, x, y, z, st, o, fx) {
       hsl(0.1, 0.5, 0.76, o, 0); o[4] = 1;
-      const dark = 200 / 12;
+      const dark = fx.soloDark || 200 / 12;
       if (st < dark) o[3] = 0.012 + 0.988 * Math.max(0, 1 - (st - 1) / 3);
       else {
         const R = (st - dark) * 4.2, d = Math.hypot(fx.pos[3 * i] - fx.solo[0], fx.pos[3 * i + 1] - fx.solo[1], (fx.pos[3 * i + 2] - fx.solo[2]) * 0.5);
@@ -499,4 +499,4 @@ function wishColor(k) {
     o[3] = 1; o[4] = 0.9;
   };
 }
-export { spotLocal };
+export { spotLocal, parts, single, newShape, alloc, text, ground, hash, twinkle, clamp01, minJerk, WARM, lx, ly };

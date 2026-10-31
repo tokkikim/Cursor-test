@@ -97,6 +97,9 @@ body.in-show .bar:hover, body.in-show .bar:focus-within { opacity: 1; }
 }
 .demo select { font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px; }
 .demo select option { background: #0a0f21; }
+.filepick { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; color: var(--ink); cursor: pointer; }
+.filepick input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.filepick:focus-within { outline: 2px solid var(--lantern); }
 body.in-show .demo { opacity: 0.4; }
 
 .ring {
@@ -196,7 +199,7 @@ input[type="text"] {
 <div class="hud">
   <div class="brand">
     <h1>하늘한칸<span class="badge">데모</span></h1>
-    <p>윤슬만의 밤 10시, 13분의 하늘</p>
+    <p id="subtitle">윤슬만의 밤 10시, 13분의 하늘</p>
   </div>
   <div class="stats">
     <span class="count">지금 <b id="count">1,284</b>명이 함께 있어요</span>
@@ -219,6 +222,10 @@ input[type="text"] {
       <option value="10240">10,240</option>
     </select>
   </label>
+  <label for="episode" style="display:flex;gap:6px;align-items:center">회차
+    <select id="episode"><option value="yunseul" selected>윤슬만의 밤</option><option value="titanic">타이타닉, 1912</option></select>
+  </label>
+  <label for="music-file" class="filepick">내 음악 파일<input type="file" id="music-file" accept="audio/*"></label>
   <label for="chapter" style="display:flex;gap:6px;align-items:center">장면
     <select id="chapter"><option value="" disabled selected>이동</option></select>
   </label>

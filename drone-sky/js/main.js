@@ -1,9 +1,11 @@
 import { createWorld } from './world.js';
 import { Fleet } from './fleet.js';
-import { DEFS, spotLocal } from './scenes.js';
 import { Music } from './music.js';
-import { SCENES, SHOW_LEN, CHAPTERS, SONGS, arrange, beatAt } from './score.js';
+import { EPISODES } from './episodes.js';
 import { SHAPES, MILESTONES, shapeFor } from './formations.js';
+
+let ep = EPISODES.yunseul;
+const eventsCache = {};
 
 /* ---------- config ---------- */
 const MAX_VISUAL = 5000;
@@ -44,7 +46,7 @@ const pm = /^#pair-(\d{4})$/.exec(location.hash || '');
 const pairNum = pm ? pm[1] : null;
 let baseCount = 1284, shownCount = 1284, pendingCount = null;
 let mode = 'lobby';
-let showT0 = 0, useAudioClock = false, sceneIdx = -1, show = null, snapshot = null, events = null;
+let showT0 = 0, useAudioClock = false, sceneIdx = -1, show = null, snapshot = null;
 let nextShowAt = Date.now() + DEMO_FIRST_WAIT;
 let spotsLeft = 2;
 const music = new Music();
@@ -62,7 +64,7 @@ window.addEventListener('resize', resize);
 const lobbyCtx = () => ({ me, lobby: true, n: fmt(baseCount + (me.launched ? 1 : 0)) });
 const participants = def => fleet.N - ((!me.launched || (def.spot && me.spot)) ? 1 : 0);
 function enterLobbyLayout(instant) {
-  const def = DEFS.pad;
+  const def = ep.defs.pad;
   fleet.setScene(def, def.build(participants(def), lobbyCtx()), now(), me, { instant, slot: 8 });
   if (pairNum && me.launched && fleet.N > 2) placeBesideFriend();
 }
@@ -81,7 +83,7 @@ enterLobbyLayout(true);
 /* ---------- show flow ---------- */
 function shot() {
   if (mode !== 'show' || sceneIdx < 0) return 'lobby';
-  const id = SCENES[sceneIdx].id;
+  const id = ep.SCENES[sceneIdx].id;
   return id === 'pad' || id === 'approach' || id === 'land' ? 'lobby' : 'show';
 }
 function showTime() { return useAudioClock ? music.ctx.currentTime - showT0 : now() - showT0; }
@@ -102,7 +104,7 @@ function buildShowState() {
 }
 function startShow() {
   if (mode === 'show') return;
-  events = events || arrange();
+  const events = eventsCache[ep.id] || (eventsCache[ep.id] = ep.arrange());
   show = buildShowState();
   if (music.running()) { const at = music.ctx.currentTime + 0.4; music.startShow(at, events); showT0 = at; useAudioClock = true; }
   else { showT0 = now() + 0.4; useAudioClock = false; }
@@ -113,15 +115,15 @@ function startShow() {
   $('progress').hidden = false;
   document.body.classList.add('in-show');
 }
-function sceneAt(st) { let k = 0; for (let i = 0; i < SCENES.length; i++) if (st >= SCENES[i].at) k = i; return k; }
+function sceneAt(st) { let k = 0; for (let i = 0; i < ep.SCENES.length; i++) if (st >= ep.SCENES[i].at) k = i; return k; }
 function enterScene(k, instant) {
-  const sc = SCENES[k], def = DEFS[sc.id];
+  const sc = ep.SCENES[k], def = ep.defs[sc.id];
   if (def.keep && instant) {
-    const parent = DEFS[def.keep];
+    const parent = ep.defs[def.keep];
     fleet.setScene(parent, parent.build(participants(parent), show), now(), me, { instant: true });
   }
   const shape = def.keep ? null : def.build(participants(def), show);
-  fleet.setScene(def, shape, now(), me, { instant, slot: sc.end - sc.at, spot: def.spot ? spotLocal(show.shapeKey) : null });
+  fleet.setScene(def, shape, now(), me, { instant, slot: sc.end - sc.at, spot: def.spot ? ep.spotAt(show) : null });
   sceneIdx = k;
   world.setShot(shot());
 }
@@ -144,9 +146,10 @@ function endShow() {
 }
 function seekTo(st) {
   if (mode !== 'show') startShow();
-  st = Math.max(0, Math.min(SHOW_LEN - 1, st));
+  st = Math.max(0, Math.min(ep.SHOW_LEN - 1, st));
   if (useAudioClock) { music.seek(st); showT0 = music.showT0; } else showT0 = now() - st;
   enterScene(sceneAt(st), true);
+  world.snap();
 }
 
 /* ---------- captions ---------- */
@@ -171,29 +174,31 @@ function frame() {
   let st = t;
   if (mode === 'show') {
     const abs = showTime();
-    if (abs >= SHOW_LEN) endShow();
+    if (abs >= ep.SHOW_LEN) endShow();
     else {
       const k = sceneAt(Math.max(0, abs));
       if (k !== sceneIdx) enterScene(k, false);
-      const sc = SCENES[sceneIdx];
+      const sc = ep.SCENES[sceneIdx];
       st = Math.max(0, abs) - sc.at;
       fx.abs = abs;
-      const b = beatAt(abs);
+      const b = ep.beatAt(abs);
       fx.pulse = b.on ? Math.exp(-b.since * (b.down ? 4 : 7)) * (b.down ? 1 : 0.5) : 0;
+      if (music.inCustom && music.inCustom(abs) && music.customSrc) fx.pulse = Math.min(1, Math.max(0, (music.energy() - 0.35) * 2.2));
+      fx.soloDark = ep.soloDark;
       fx.beatLen = b.len;
       fx.shapeKey = show.shapeKey; fx.wishes = show.wishes; fx.scene = show.scene;
       fx.soloIdx = show.soloIdx;
       fx.solo[0] = fleet.pos[3 * fx.soloIdx]; fx.solo[1] = fleet.pos[3 * fx.soloIdx + 1]; fx.solo[2] = fleet.pos[3 * fx.soloIdx + 2];
-      const cap = DEFS[sc.id].cap ? DEFS[sc.id].cap(st, show) : null;
+      const cap = ep.defs[sc.id].cap ? ep.defs[sc.id].cap(st, show) : null;
       setCaption(cap ? cap[0] : '', cap ? cap[1] : '');
-      $('progress-fill').style.width = Math.min(100, Math.max(0, abs) / SHOW_LEN * 100) + '%';
-      if (sc.id === 'main' && !snapshot && t - fleet.t0 > fleet.T + 3) takeSnapshot();
+      $('progress-fill').style.width = Math.min(100, Math.max(0, abs) / ep.SHOW_LEN * 100) + '%';
+      if (sc.id === ep.snapScene && !snapshot && t - fleet.t0 > fleet.T + 3) takeSnapshot();
     }
   }
-  const id = mode === 'show' && sceneIdx >= 0 ? SCENES[sceneIdx].id : 'pad';
-  if (id === 'solo' || id === 'fireworks') fx.meColor = null;
+  const id = mode === 'show' && sceneIdx >= 0 ? ep.SCENES[sceneIdx].id : 'pad';
+  if (id === 'solo' || id === 'tSolo' || id === 'fireworks' || id === 'rockets') fx.meColor = null;
   else {
-    const gold = me.spot && id === 'main';
+    const gold = me.spot && id === ep.spotScene;
     fx.meColor = gold ? DRONE_COLORS[4] : DRONE_COLORS[me.color];
     fx.meAlpha = id === 'land' || id === 'pad' ? 0.6 : 1;
     fx.meSize = gold ? 2.2 : 1.5;
@@ -272,10 +277,10 @@ function updateHud() {
   const nx = $('next'), song = $('song');
   if (mode === 'show') {
     const abs = Math.max(0, showTime());
-    nx.innerHTML = '쇼 <b>' + clock(abs) + '</b> / ' + clock(SHOW_LEN);
-    const s = SONGS.find(x => abs >= x.from && abs < x.to);
-    song.textContent = s ? '음악 · ' + s.title : '';
-    const ch = CHAPTERS.filter(c => abs >= c.at).pop();
+    nx.innerHTML = '쇼 <b>' + clock(abs) + '</b> / ' + clock(ep.SHOW_LEN);
+    const s = ep.SONGS.find(x => abs >= x.from && abs < x.to);
+    song.textContent = music.inCustom && music.inCustom(abs) && music.customSrc ? '음악 · 내 음악 파일' : s ? '음악 · ' + s.title : '';
+    const ch = ep.CHAPTERS.filter(c => abs >= c.at).pop();
     if (ch && document.activeElement !== $('chapter')) $('chapter').value = String(ch.at);
   } else {
     const left = Math.max(0, Math.round((nextShowAt - Date.now()) / 1000));
@@ -283,6 +288,7 @@ function updateHud() {
     song.textContent = '실서비스에서는 매일 밤 10시';
   }
   const c = baseCount + (me.launched ? 1 : 0);
+  if (ep.id !== 'yunseul') { $('goal-text').textContent = '특별 회차 · 그날 밤을 기억하며'; $('goal-fill').style.width = '100%'; return; }
   let cur = 'star', next = null, prevAt = 0;
   MILESTONES.forEach(m => { if (c >= m.at) { cur = m.key; prevAt = m.at; } else if (!next) next = m; });
   if (next) {
@@ -312,7 +318,7 @@ function wakeAudio() {
   if (mode === 'lobby' && music.mode !== 'lobby') music.startLobby();
   if (mode === 'show' && music.mode !== 'show') {           // a show that began silently: join it in time
     const st = showTime();
-    music.startShow(music.ctx.currentTime - st, events);
+    music.startShow(music.ctx.currentTime - st, eventsCache[ep.id]);
     music.seek(st);
     showT0 = music.showT0; useAudioClock = true;
   }
@@ -367,7 +373,31 @@ $('btn-preview').addEventListener('click', () => {
   startShow();
 });
 const chapterSel = $('chapter');
-CHAPTERS.forEach(c => { const o = document.createElement('option'); o.value = String(c.at); o.textContent = clock(c.at) + ' ' + c.label; chapterSel.appendChild(o); });
+function fillChapters() {
+  chapterSel.innerHTML = '<option value="" disabled selected>이동</option>';
+  ep.CHAPTERS.forEach(c => { const o = document.createElement('option'); o.value = String(c.at); o.textContent = clock(c.at) + ' ' + c.label; chapterSel.appendChild(o); });
+}
+fillChapters();
+$('episode').addEventListener('change', e => {
+  const next = EPISODES[e.target.value]; if (!next || next === ep) return;
+  if (mode === 'show') { mode = 'lobby'; sceneIdx = -1; music.startLobby(); setCaption('', ''); $('progress').hidden = true; document.body.classList.remove('in-show'); enterLobbyLayout(false); world.setShot('lobby'); }
+  ep = next;
+  $('subtitle').textContent = ep.subtitle;
+  fillChapters(); refreshShop(); updateHud();
+  if (music.custom) music.setCustom(music.custom.buffer, ep.customFrom);
+  toast(ep.title + ' 회차로 바꿨어요. "지금 쇼 시작"을 눌러 보세요');
+});
+$('music-file').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  wakeAudio();
+  if (!music.ctx) { toast('이 브라우저에서는 소리를 낼 수 없어요'); return; }
+  try {
+    const buf = await music.ctx.decodeAudioData(await f.arrayBuffer());
+    music.setCustom(buf, ep.customFrom);
+    if (mode === 'show') music.playCustom(showTime());
+    toast('"' + f.name + '"을 ' + clock(ep.customFrom) + '부터 틀어요 (' + clock(buf.duration) + ' 길이). 그동안 기본 음악은 쉬어요');
+  } catch (err) { toast('이 파일은 재생할 수 없어요. MP3나 M4A 파일을 골라 주세요'); }
+});
 chapterSel.addEventListener('change', () => { wakeAudio(); seekTo(parseFloat(chapterSel.value)); });
 
 /* shop */
@@ -393,7 +423,7 @@ $('buy-color').addEventListener('click', () => { if (needLaunch()) return; me.co
 $('buy-spot').addEventListener('click', () => {
   if (needLaunch() || me.spot) return;
   me.spot = true; spotsLeft -= 1; refreshShop();
-  paid('다음 쇼에서 ' + SHAPES[shapeFor(baseCount + 1)].spotLabel + ' 자리를 맡아요');
+  paid('다음 쇼에서 ' + ep.spotLabel(baseCount + 1) + ' 자리를 맡아요');
 });
 $('buy-scene').addEventListener('click', () => {
   if (needLaunch()) return;
@@ -403,11 +433,11 @@ $('buy-scene').addEventListener('click', () => {
   paid('다음 쇼에서 "' + v + '" 메시지가 하늘을 채워요');
 });
 function refreshShop() {
-  const shape = SHAPES[shapeFor(baseCount + (me.launched ? 1 : 0))];
+  const spotLabel = ep.spotLabel(baseCount + (me.launched ? 1 : 0));
   $('buy-color').disabled = me.color === chosenColor;
   $('buy-color').textContent = me.color === chosenColor ? '적용됨' : '1,000원';
-  $('spot-title').textContent = '명당 자리 · ' + shape.spotLabel;
-  $('spot-desc').textContent = '"오늘의 그림"에서 ' + shape.spotLabel + ' 자리를 금빛으로 맡아요. 공유 카드에도 그렇게 남아요.';
+  $('spot-title').textContent = '명당 자리 · ' + spotLabel;
+  $('spot-desc').textContent = '쇼의 대표 장면에서 ' + spotLabel + ' 자리를 금빛으로 맡아요. 공유 카드에도 그렇게 남아요.';
   $('spot-left').textContent = me.spot ? '구매 완료 · 다음 쇼에 반영' : '이번 쇼 ' + spotsLeft + '자리 남음';
   $('buy-spot').disabled = me.spot;
   $('buy-spot').textContent = me.spot ? '적용됨' : '5,000원';
@@ -430,11 +460,11 @@ $('demo-count').addEventListener('change', e => {
 function takeSnapshot() {
   const { W, H } = world.size();
   const p = me.launched ? world.project(fleet.pos[0], fleet.pos[1], fleet.pos[2], { x: 0, y: 0, visible: false }) : null;
-  snapshot = { img: world.capture(), W, H, me: p && { x: p.x, y: p.y }, key: show.shapeKey, count: show.count, spot: me.spot, launched: me.launched };
+  snapshot = { img: world.capture(), W, H, me: p && { x: p.x, y: p.y }, key: show.shapeKey, count: show.count, countText: fmt(show.count), spot: me.spot, launched: me.launched, ep };
 }
 function openShare() {
   if (!snapshot) return;
-  const shape = SHAPES[snapshot.key];
+  const sep = snapshot.ep;
   const img = new Image();
   img.onload = () => {
     const c = document.createElement('canvas'); c.width = 1080; c.height = 1920;
@@ -457,11 +487,11 @@ function openShare() {
     g.fillStyle = '#eef1fa'; g.font = '700 58px "Gowun Batang", serif'; g.fillText('하늘한칸', 540, 100);
     const d = new Date();
     g.fillStyle = '#a3adc8'; g.font = '400 30px "Noto Sans KR", sans-serif';
-    g.fillText('윤슬만 · ' + d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0') + ' 밤 10시', 540, 145);
+    g.fillText(sep.place + ' · ' + d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0') + ' 밤 10시', 540, 145);
     g.fillStyle = '#eef1fa'; g.font = '700 70px "Gowun Batang", serif';
-    g.fillText(snapshot.spot ? shape.spotTopic + ' 나였어요' : fmt(snapshot.count) + '개의 불빛 중 하나', 540, 1560);
+    g.fillText(sep.cardHead(snapshot), 540, 1560);
     g.fillStyle = '#c9d0e6'; g.font = '400 42px "Noto Sans KR", sans-serif';
-    g.fillText('오늘 밤, 우리가 모여 ' + shape.became, 540, 1640);
+    g.fillText(sep.cardSub(snapshot), 540, 1640);
     g.fillStyle = '#ffcf6b'; g.font = '500 34px "Noto Sans KR", sans-serif'; g.fillText(me.name, 540, 1730);
     g.fillStyle = '#a3adc8'; g.font = '400 30px "Noto Sans KR", sans-serif'; g.fillText('매일 밤 10시 · 나도 한 칸 띄우러 가기', 540, 1850);
     $('share-img').src = c.toDataURL('image/jpeg', 0.92);
@@ -478,4 +508,4 @@ refreshShop();
 updateSoundBtn();
 requestAnimationFrame(frame);
 
-window.__sky = { startShow, seekTo, state: () => ({ mode, scene: sceneIdx >= 0 ? SCENES[sceneIdx].id : null, st: mode === 'show' ? showTime() : 0, T: fleet.T, maxD: fleet.maxD }) };
+window.__sky = { startShow, seekTo, setEpisode: id => { const s = $('episode'); s.value = id; s.dispatchEvent(new Event('change')); }, state: () => ({ mode, ep: ep.id, scene: sceneIdx >= 0 ? ep.SCENES[sceneIdx].id : null, st: mode === 'show' ? showTime() : 0, T: fleet.T, maxD: fleet.maxD }) };

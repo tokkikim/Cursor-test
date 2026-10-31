@@ -61,6 +61,7 @@ export class Music {
   startLobby() {
     if (!this.ctx) return;
     this.stopAmbience();
+    this.stopCustom();
     this.mode = 'lobby';
     this.lobbyNext = this.ctx.currentTime + 0.3;
     this.lobbyStep = 0;
@@ -73,6 +74,7 @@ export class Music {
     this.events = events;
     this.showT0 = at;
     this.ptr = 0;
+    this.playCustom(0);
   }
   // jump inside the show: restart long ambience that covers this moment
   seek(st) {
@@ -83,6 +85,7 @@ export class Music {
     let lo = 0, hi = this.events.length;
     while (lo < hi) { const mid = (lo + hi) >> 1; if (this.events[mid][0] < st) lo = mid + 1; else hi = mid; }
     this.ptr = lo;
+    this.playCustom(st);
     for (const e of this.events) {
       if ((e[1] === 'waves' || e[1] === 'rain' || e[1] === 'crackle') && e[0] < st && e[0] + e[2] > st) this.play([0, e[1], e[0] + e[2] - st, e[3]], now + 0.05);
     }
@@ -92,6 +95,31 @@ export class Music {
     this.ambience.forEach(a => { try { a.g.gain.cancelScheduledValues(t); a.g.gain.setTargetAtTime(0.0001, t, 0.4); a.src.stop(t + 2); } catch (e) { /* already stopped */ } });
     this.ambience = [];
   }
+
+  // a listener's own audio file, played inside the show from `at` seconds; generated music pauses meanwhile
+  setCustom(buffer, at) { this.custom = buffer ? { buffer, at, dur: buffer.duration } : null; }
+  inCustom(st) { return this.custom && st >= this.custom.at && st < this.custom.at + this.custom.dur; }
+  playCustom(st) {
+    if (!this.ctx || !this.custom) return;
+    if (this.customSrc) { try { this.customSrc.stop(); } catch (e) { /* stopped */ } this.customSrc = null; }
+    const c = this.custom, now = this.ctx.currentTime;
+    const startAt = this.showT0 + c.at, offset = Math.max(0, st - c.at);
+    if (offset >= c.dur) return;
+    const src = this.ctx.createBufferSource(); src.buffer = c.buffer;
+    if (!this.analyser) { this.analyser = this.ctx.createAnalyser(); this.analyser.fftSize = 1024; this.freq = new Uint8Array(this.analyser.frequencyBinCount); }
+    const g = this.ctx.createGain(); g.gain.value = 0.9;
+    src.connect(g); g.connect(this.out); g.connect(this.analyser);
+    src.start(Math.max(now, startAt), offset);
+    this.customSrc = src;
+  }
+  // low-band energy of the custom track, 0..1, for light pulses
+  energy() {
+    if (!this.analyser || !this.customSrc) return 0;
+    this.analyser.getByteFrequencyData(this.freq);
+    let s = 0; for (let i = 1; i < 12; i++) s += this.freq[i];
+    return s / (11 * 255);
+  }
+  stopCustom() { if (this.customSrc) { try { this.customSrc.stop(); } catch (e) { /* stopped */ } this.customSrc = null; } }
 
   tick() {
     const ctx = this.ctx;
@@ -104,7 +132,8 @@ export class Music {
         const e = this.events[this.ptr], t = this.showT0 + e[0];
         if (t >= ahead) break;
         this.ptr++;
-        if (t >= now - 0.05) this.play(e, Math.max(t, now));
+        const quiet = this.inCustom(e[0]) && e[1] !== 'waves' && e[1] !== 'rain' && e[1] !== 'crackle';
+        if (!quiet && t >= now - 0.05) this.play(e, Math.max(t, now));
       }
     }
   }
@@ -126,6 +155,7 @@ export class Music {
       case 'crackle': this.crackle(t, a); break;
       case 'rain': this.ambience.push(this.rain(t, a)); break;
       case 'waves': this.ambience.push(this.waves(t, a, 0.07)); break;
+      case 'horn': this.horn(t, a, b); break;
     }
   }
 
@@ -305,6 +335,16 @@ export class Music {
     src.connect(f); f.connect(g); this.send(g, 0.3);
     src.stop(t + dur + 0.1);
     return { src, g };
+  }
+  horn(t, dur, vel) {
+    const ctx = this.ctx;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 420; f.Q.value = 1.2;
+    const g = ctx.createGain(); const end = this.adsr(g, t, 0.35, vel, dur, 1.4);
+    f.connect(g); this.send(g, 0.7);
+    [[45, -6], [45, 6], [52, 0], [33, 0]].forEach(([m, dt]) => {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = mtof(m); o.detune.value = dt;
+      o.connect(f); o.start(t); o.stop(end);
+    });
   }
   waves(t, dur, vol) {
     const ctx = this.ctx;

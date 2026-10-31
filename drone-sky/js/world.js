@@ -263,7 +263,8 @@ export function createWorld(canvas, cap) {
     return renderer.domElement.toDataURL('image/jpeg', 0.92);
   }
 
-  return { droneGeo, resize, render, project, setShot, capture, size: () => ({ W, H }) };
+  const snap = () => { camPos.copy(want.pos); look.copy(want.look); };
+  return { droneGeo, resize, render, project, setShot, snap, capture, size: () => ({ W, H }) };
 }
 
 export function hsl(h, s, l, out, o) {
