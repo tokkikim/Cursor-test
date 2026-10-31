@@ -403,3 +403,4 @@ export const DEFS = {
   land: BASE.land
 };
 DEFS.ship.spotAt = BOW;
+export { shipParts, shipColor, FUNNEL_BAND };

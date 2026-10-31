@@ -104,6 +104,12 @@ function buildShowState() {
 }
 function startShow() {
   if (mode === 'show') return;
+  if (ep.needsFile && !music.custom) {
+    toast('영화 회차는 노래 음원이 필요해요. "내 음악 파일"에서 라이선스 받은 음원을 골라 주세요');
+    nextShowAt = Date.now() + DEMO_GAP;
+    return;
+  }
+  if (ep.dynamic) { ep.prepare(music.custom.buffer); music.setCustom(music.custom.buffer, ep.customFrom); delete eventsCache[ep.id]; fillChapters(); }
   const events = eventsCache[ep.id] || (eventsCache[ep.id] = ep.arrange());
   show = buildShowState();
   if (music.running()) { const at = music.ctx.currentTime + 0.4; music.startShow(at, events); showT0 = at; useAudioClock = true; }
@@ -384,8 +390,8 @@ $('episode').addEventListener('change', e => {
   ep = next;
   $('subtitle').textContent = ep.subtitle;
   fillChapters(); refreshShop(); updateHud();
-  if (music.custom) music.setCustom(music.custom.buffer, ep.customFrom);
-  toast(ep.title + ' 회차로 바꿨어요. "지금 쇼 시작"을 눌러 보세요');
+  if (music.custom) { music.setCustom(music.custom.buffer, ep.customFrom); if (ep.dynamic) { ep.prepare(music.custom.buffer); fillChapters(); } }
+  toast(ep.needsFile && !music.custom ? ep.title + ' 회차예요. 먼저 "내 음악 파일"로 노래 음원을 골라 주세요' : ep.title + ' 회차로 바꿨어요. "지금 쇼 시작"을 눌러 보세요');
 });
 $('music-file').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0]; if (!f) return;
@@ -394,6 +400,7 @@ $('music-file').addEventListener('change', async e => {
   try {
     const buf = await music.ctx.decodeAudioData(await f.arrayBuffer());
     music.setCustom(buf, ep.customFrom);
+    if (ep.dynamic) { ep.prepare(buf); fillChapters(); }
     if (mode === 'show') music.playCustom(showTime());
     toast('"' + f.name + '"을 ' + clock(ep.customFrom) + '부터 틀어요 (' + clock(buf.duration) + ' 길이). 그동안 기본 음악은 쉬어요');
   } catch (err) { toast('이 파일은 재생할 수 없어요. MP3나 M4A 파일을 골라 주세요'); }

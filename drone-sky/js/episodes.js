@@ -1,6 +1,7 @@
 // Show episodes: the everyday 윤슬만 show and the Titanic special.
 import * as Y from './score.js';
 import * as T from './titanic.js';
+import * as F from './film.js';
 import { DEFS as YDEFS, spotLocal } from './scenes.js';
 import { SHAPES, shapeFor } from './formations.js';
 
@@ -31,5 +32,18 @@ export const EPISODES = {
     spotLabel: () => T.META.spotLabel,
     cardHead: snap => snap.spot ? T.META.spotTopic + ' 나였어요' : snap.countText + '개의 불빛과 함께 기억했어요',
     cardSub: () => T.META.cardLine
+  },
+  film: {
+    id: 'film', title: F.META.title, subtitle: F.META.subtitle, place: F.META.place,
+    needsFile: true, dynamic: true,
+    ...F.plan(240, 160), arrange: null, beatAt: beatFn([]),
+    defs: F.DEFS, snapScene: F.META.snapScene, spotScene: F.META.spotScene, soloDark: F.META.soloDark, customFrom: F.SONG_AT,
+    // lay the scenes on the loaded song: its length and its climax decide the timeline
+    prepare(buffer) { const p = F.plan(buffer.duration, F.findClimax(buffer)); Object.assign(this, p); this.arrange = () => F.arrange(p); },
+    spotAt: () => F.SPOT,
+    spotLabel: () => F.META.spotLabel,
+    cardHead: snap => snap.spot ? F.META.spotTopic + ' 나였어요' : snap.countText + '개의 불빛과 함께 날았어요',
+    cardSub: () => F.META.cardLine
   }
 };
+EPISODES.film.arrange = () => F.arrange(EPISODES.film);
