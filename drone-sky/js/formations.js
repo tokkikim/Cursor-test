@@ -79,12 +79,26 @@ export function spotLocal(key) {
 
 /* ---------- mask sampling ---------- */
 const cache = new Map();
-function sampleMask(cacheKey, drawFn, n) {
+const areaCache = new Map();
+export const MASK = { W: MASK_W, H: MASK_H, UNIT };
+export function maskArea(key, drawFn) {
+  if (areaCache.has(key)) return areaCache.get(key);
+  const c = document.createElement('canvas'); c.width = MASK_W; c.height = MASK_H;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.fillStyle = '#fff'; g.strokeStyle = '#fff';
+  drawFn(g);
+  const data = g.getImageData(0, 0, MASK_W, MASK_H).data;
+  let area = 0;
+  for (let y = 0; y < MASK_H; y += 2) for (let x = 0; x < MASK_W; x += 2) if (data[(y * MASK_W + x) * 4 + 3] > 128) area += 4;
+  areaCache.set(key, area);
+  return area;
+}
+export function sampleMask(cacheKey, drawFn, n) {
   const key = cacheKey + ':' + n;
   if (cache.has(key)) return cache.get(key);
   const c = document.createElement('canvas'); c.width = MASK_W; c.height = MASK_H;
   const g = c.getContext('2d', { willReadFrequently: true });
-  g.fillStyle = '#fff';
+  g.fillStyle = '#fff'; g.strokeStyle = '#fff';
   drawFn(g);
   const data = g.getImageData(0, 0, MASK_W, MASK_H).data;
   const filled = (x, y) => data[((y | 0) * MASK_W + (x | 0)) * 4 + 3] > 128;
