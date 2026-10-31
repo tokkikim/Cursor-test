@@ -1,6 +1,6 @@
 // Episode: Titanic (1997 film), built around the licensed soundtrack recording the operator loads.
 // The song is not bundled: the show waits for the audio file, finds its climax and lays the scenes on it.
-import { parts, text, clamp01, twinkle, lx, ly, C } from './scenes.js';
+import { parts, text, clamp01, twinkle, lx, ly, C, newShape } from './scenes.js';
 import { DEFS as T, shipParts, shipColor, FUNNEL_BAND } from './titanic.js';
 import { hsl } from './world.js';
 
@@ -29,15 +29,87 @@ export function findClimax(buffer) {
   return at * 0.5;
 }
 
+/* ---------- portraits from licensed stills ---------- */
+// Up to two images the operator loads; each becomes a drone formation coloured from the photo.
+const PORTRAITS = [];
+export const portraitCount = () => PORTRAITS.length;
+export async function loadPortraits(files) {
+  PORTRAITS.length = 0;
+  for (const f of Array.from(files).slice(0, 2)) {
+    const bmp = await createImageBitmap(f);
+    const c = document.createElement('canvas'); c.width = 800; c.height = 450;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    const s = Math.min(800 / bmp.width, 440 / bmp.height), w = bmp.width * s, h = bmp.height * s;
+    g.drawImage(bmp, (800 - w) / 2, (450 - h) / 2, w, h);
+    PORTRAITS.push({ data: g.getImageData(0, 0, 800, 450).data, cache: {} });
+  }
+  return PORTRAITS.length;
+}
+// Importance sampling on 4-px cells: brightness plus edges (eyes, mouth, jaw line) get more drones.
+function portraitShape(k, n) {
+  const P = PORTRAITS[k];
+  if (P.cache[n]) return P.cache[n];
+  const W = 200, H = 112, CS = 4, lum = new Float32Array(W * H), rgb = new Uint32Array(W * H), d = P.data;
+  for (let cy = 0; cy < H; cy++) for (let cx = 0; cx < W; cx++) {
+    let r = 0, gg = 0, b = 0, m = 0;
+    for (let y = cy * CS; y < cy * CS + CS && y < 450; y++) for (let x = cx * CS; x < cx * CS + CS; x++) { const o = (y * 800 + x) * 4; r += d[o]; gg += d[o + 1]; b += d[o + 2]; m++; }
+    r /= m; gg /= m; b /= m;
+    lum[cy * W + cx] = (0.299 * r + 0.587 * gg + 0.114 * b) / 255;
+    rgb[cy * W + cx] = (Math.round(r) << 16) | (Math.round(gg) << 8) | Math.round(b);
+  }
+  const wt = new Float64Array(W * H);
+  let total = 0;
+  for (let cy = 0; cy < H; cy++) for (let cx = 0; cx < W; cx++) {
+    const i = cy * W + cx;
+    if (cy > 0 && cy < H - 1 && cx > 0 && cx < W - 1) {
+      const ex = lum[i + 1] - lum[i - 1], ey = lum[i + W] - lum[i - W];
+      total += 0.5 * Math.pow(lum[i], 2) + 3.2 * Math.min(0.5, Math.hypot(ex, ey));
+    }
+    wt[i] = total;      // running sum over every cell keeps the table monotonic
+  }
+  const s = newShape(n);
+  let seed = 99 + k;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  for (let j = 0; j < n; j++) {
+    const u = (j + rnd()) / n * total;
+    let lo = 0, hi = W * H - 1;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (wt[mid] < u) lo = mid + 1; else hi = mid; }
+    const cx = lo % W, cy = Math.floor(lo / W);
+    const px = (cx + rnd()) * CS, py = (cy + rnd()) * CS;
+    s.pts[3 * j] = lx(px); s.pts[3 * j + 1] = ly(py); s.pts[3 * j + 2] = (rnd() - 0.5) * 0.4;
+    s.prm[j] = rgb[lo];
+  }
+  P.cache[n] = s;
+  return s;
+}
+function portraitDef(k) {
+  return {
+    tcap: 26,
+    build: n => portraitShape(k, n),
+    color(i, tag, prm, x, y, z, st, o, fx) {
+      const v = prm | 0, r = (v >> 16 & 255) / 255, g = (v >> 8 & 255) / 255, b = (v & 255) / 255;
+      const m = (r + g + b) / 3, sat = 1.25;                 // a touch more colour, LEDs read washed out otherwise
+      o[0] = clamp01(m + (r - m) * sat); o[1] = clamp01(m + (g - m) * sat); o[2] = clamp01(m + (b - m) * sat);
+      o[0] *= 0.85; o[1] *= 0.85; o[2] *= 0.85;
+      o[3] = 0.2 + 0.55 * Math.min(1, m * 1.4) + 0.1 * fx.pulse; o[4] = 0.8;
+    },
+    cap: () => ['그날의 두 사람', '']
+  };
+}
+
 /* ---------- timeline built from the song ---------- */
 const BEFORE = ['fShip', 'fStars', 'fBow', 'fHeart', 'fHand', 'fIceberg', 'fNever'];
 const AFTER = ['fFlying', 'fStair', 'fTitle'];
-export function plan(songDur, climax) {
+export function plan(songDur, climax, faces = 0) {
   const s0 = SONG_AT, cl = s0 + Math.max(60, Math.min(songDur - 45, climax)), end = s0 + songDur;
   const scenes = [{ id: 'pad', at: 0 }, { id: 'climb', at: 10 }];
   BEFORE.forEach((id, k) => scenes.push({ id, at: s0 + (cl - s0) * k / BEFORE.length }));
   const afterLen = end - cl;
-  scenes.push({ id: 'fFlying', at: cl }, { id: 'fStair', at: cl + afterLen * 0.45 }, { id: 'fTitle', at: cl + afterLen * 0.72 });
+  const after = ['fFlying', ...Array.from({ length: faces }, (_, k) => 'fPortrait' + k), 'fStair', 'fTitle'];
+  const share = { fFlying: 1.3, fStair: 0.9, fTitle: 0.9, fPortrait0: 1.1, fPortrait1: 1.1 };
+  const sum = after.reduce((a, id) => a + share[id], 0);
+  let acc = cl;
+  after.forEach(id => { scenes.push({ id, at: acc }); acc += afterLen * share[id] / sum; });
   scenes.push({ id: 'approach', at: end + 2 }, { id: 'land', at: end + 2 + 30 });
   const SHOW_LEN = end + 2 + LAND;
   scenes.forEach((s, i) => { s.end = i + 1 < scenes.length ? scenes[i + 1].at : SHOW_LEN; });
@@ -165,6 +237,7 @@ export const DEFS = {
     cap: () => ['모두가 다시 만나는 그곳', '시계 아래 계단에서']
   },
   fTitle: { build: n => text('My Heart Will Go On', n), color: (i, tag, prm, x, y, z, st, o, fx) => { hsl(0.1, 0.8, 0.66 + 0.1 * Math.sin(prm * 10 - st * 1.5) + 0.08 * fx.pulse, o, 0); o[3] = 1; o[4] = 0.9; }, cap: (st, c) => ['마음은 계속될 거예요', '오늘 ' + c.n + '명이 함께했어요'] },
+  fPortrait0: portraitDef(0), fPortrait1: portraitDef(1),
   approach: T.approach, land: T.land
 };
 export const SPOT = [lx(612), ly(250), 0];

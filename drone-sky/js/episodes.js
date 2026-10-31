@@ -39,7 +39,7 @@ export const EPISODES = {
     ...F.plan(240, 160), arrange: null, beatAt: beatFn([]),
     defs: F.DEFS, snapScene: F.META.snapScene, spotScene: F.META.spotScene, soloDark: F.META.soloDark, customFrom: F.SONG_AT,
     // lay the scenes on the loaded song: its length and its climax decide the timeline
-    prepare(buffer) { const p = F.plan(buffer.duration, F.findClimax(buffer)); Object.assign(this, p); this.arrange = () => F.arrange(p); },
+    prepare(buffer) { const p = F.plan(buffer.duration, F.findClimax(buffer), F.portraitCount()); Object.assign(this, p); this.arrange = () => F.arrange(p); },
     spotAt: () => F.SPOT,
     spotLabel: () => F.META.spotLabel,
     cardHead: snap => snap.spot ? F.META.spotTopic + ' 나였어요' : snap.countText + '개의 불빛과 함께 날았어요',

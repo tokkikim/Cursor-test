@@ -2,6 +2,7 @@ import { createWorld } from './world.js';
 import { Fleet } from './fleet.js';
 import { Music } from './music.js';
 import { EPISODES } from './episodes.js';
+import { loadPortraits } from './film.js';
 import { SHAPES, MILESTONES, shapeFor } from './formations.js';
 
 let ep = EPISODES.yunseul;
@@ -392,6 +393,14 @@ $('episode').addEventListener('change', e => {
   fillChapters(); refreshShop(); updateHud();
   if (music.custom) { music.setCustom(music.custom.buffer, ep.customFrom); if (ep.dynamic) { ep.prepare(music.custom.buffer); fillChapters(); } }
   toast(ep.needsFile && !music.custom ? ep.title + ' 회차예요. 먼저 "내 음악 파일"로 노래 음원을 골라 주세요' : ep.title + ' 회차로 바꿨어요. "지금 쇼 시작"을 눌러 보세요');
+});
+$('face-file').addEventListener('change', async e => {
+  const files = e.target.files; if (!files || !files.length) return;
+  try {
+    const k = await loadPortraits(files);
+    if (EPISODES.film.SCENES && music.custom && ep.dynamic) { ep.prepare(music.custom.buffer); fillChapters(); }
+    toast('사진 ' + k + '장을 드론 배치로 바꿨어요. 영화 회차의 클라이맥스 다음에 하늘에 떠요');
+  } catch (err) { toast('이 사진은 열 수 없어요. JPG나 PNG 파일을 골라 주세요'); }
 });
 $('music-file').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0]; if (!f) return;
