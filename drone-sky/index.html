@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>하늘한칸</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* Layout: full-screen night sky canvas; thin HUD on top, action bar at the bottom, sheets for onboarding / shop / share. Single dark theme by choice: it is a night sky. */
+:root {
+  --night: #070b1a;
+  --ink: #eef1fa;
+  --muted: #a3adc8;
+  --lantern: #ffcf6b;
+  --sky: #9ec5ff;
+  --panel: rgba(13, 19, 40, 0.86);
+  --line: rgba(158, 197, 255, 0.2);
+  --font-display: "Gowun Batang", "AppleMyungjo", serif;
+  --font-body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--night);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+canvas#sky { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: manipulation; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--lantern); outline-offset: 2px; }
+
+/* HUD */
+.hud {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  padding: calc(14px + env(safe-area-inset-top)) 18px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  pointer-events: none;
+  z-index: 3;
+}
+.brand { display: grid; gap: 2px; }
+.brand h1 { margin: 0; font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; letter-spacing: 0.02em; }
+.brand p { margin: 0; font-size: 0.82rem; color: var(--muted); }
+.badge {
+  display: inline-block;
+  margin-left: 8px;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--night);
+  background: var(--sky);
+  border-radius: 4px;
+  padding: 1px 6px;
+  vertical-align: 4px;
+}
+.stats { display: grid; gap: 6px; justify-items: end; text-align: right; font-size: 0.85rem; color: var(--muted); }
+.stats b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.stats .count b { font-size: 1.05rem; color: var(--lantern); }
+.goal { width: 220px; display: grid; gap: 4px; }
+.goal .track { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.goal .fill { height: 100%; background: var(--lantern); width: 0; transition: width 0.6s ease; }
+
+.caption {
+  position: fixed;
+  left: 50%;
+  top: 16%;
+  transform: translateX(-50%);
+  z-index: 3;
+  text-align: center;
+  pointer-events: none;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+  max-width: 90vw;
+}
+.caption small { display: block; font-family: var(--font-body); font-size: 0.8rem; color: var(--muted); }
+
+/* Bottom bar */
+.bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  padding: 0 14px calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  z-index: 3;
+}
+.bar button {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 0.9rem;
+  backdrop-filter: blur(6px);
+}
+.bar button.primary { border-color: var(--lantern); color: var(--lantern); font-weight: 700; }
+.bar button:hover { border-color: var(--sky); }
+
+.demo {
+  position: fixed;
+  left: 14px;
+  bottom: calc(70px + env(safe-area-inset-bottom));
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.demo select {
+  font: inherit;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+.demo select option { background: var(--night); }
+
+/* Wish bubbles & tooltip */
+.bubble, .tip {
+  position: fixed;
+  z-index: 2;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  background: rgba(13, 19, 40, 0.78);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  max-width: 70vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: floatup 4.5s ease forwards;
+}
+.tip { animation: none; z-index: 4; white-space: normal; text-align: center; }
+.tip b { color: var(--lantern); font-weight: 500; display: block; font-size: 0.75rem; }
+@keyframes floatup {
+  0% { opacity: 0; margin-top: 6px; }
+  12% { opacity: 1; margin-top: 0; }
+  80% { opacity: 1; }
+  100% { opacity: 0; margin-top: -10px; }
+}
+
+/* Sheets */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(4, 7, 18, 0.45);
+}
+.sheet[hidden] { display: none; }
+.card {
+  width: min(420px, 100%);
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px;
+  display: grid;
+  gap: 14px;
+  backdrop-filter: blur(10px);
+}
+.card h2 { margin: 0; font-family: var(--font-display); font-size: 1.35rem; text-wrap: balance; }
+.card p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.close { background: none; border: none; color: var(--muted); font-size: 0.85rem; padding: 4px; }
+.namechip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.namechip strong { color: var(--lantern); font-weight: 700; }
+.link { background: none; border: none; color: var(--sky); font-size: 0.82rem; padding: 0; text-decoration: underline; }
+label { font-size: 0.85rem; color: var(--muted); display: grid; gap: 6px; }
+input[type="text"] {
+  font: inherit;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  width: 100%;
+}
+.cta {
+  background: var(--lantern);
+  color: #2a1d00;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+}
+.ghost { background: none; border: none; color: var(--muted); font-size: 0.88rem; }
+
+.testnote {
+  font-size: 0.8rem !important;
+  color: var(--night) !important;
+  background: var(--sky);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-weight: 700;
+}
+.item {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+.item h3 { margin: 0; font-size: 1rem; }
+.item .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.item .left { font-size: 0.8rem; color: var(--lantern); }
+.buy {
+  flex: none;
+  background: none;
+  border: 1px solid var(--lantern);
+  color: var(--lantern);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.buy[disabled] { border-color: var(--line); color: var(--muted); cursor: default; }
+.swatches { display: flex; gap: 8px; }
+.swatch {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+}
+.swatch[aria-pressed="true"] { border-color: var(--ink); }
+.fine { font-size: 0.75rem !important; }
+.share-img { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; }
+.linkbox {
+  font-size: 0.78rem;
+  word-break: break-all;
+  color: var(--sky);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 20;
+  background: var(--panel);
+  border: 1px solid var(--lantern);
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 0.88rem;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  max-width: calc(100vw - 28px);
+}
+.toast[hidden] { display: none; }
+.toast button { background: none; border: none; color: var(--lantern); font-weight: 700; padding: 0; white-space: nowrap; }
+
+@media (max-width: 560px) {
+  .hud { flex-direction: column; }
+  .stats { justify-items: start; text-align: left; }
+  .demo { bottom: calc(118px + env(safe-area-inset-bottom)); }
+  .toast { bottom: calc(166px + env(safe-area-inset-bottom)); }
+}
+</style>
+</head>
+<body>
+
+<canvas id="sky" aria-label="밤하늘을 날아다니는 드론 불빛들. 정각마다 모두 모여 하나의 그림이 된다"></canvas>
+
+<div class="hud">
+  <div class="brand">
+    <h1>하늘한칸<span class="badge">데모</span></h1>
+    <p>매일 밤 10시, 우리가 모여 그림이 돼요</p>
+  </div>
+  <div class="stats">
+    <span class="count">지금 <b id="count">1,284</b>대가 날고 있어요</span>
+    <span id="next">다음 정각 쇼까지 <b>--:--</b></span>
+    <div class="goal">
+      <span id="goal-text">하트까지 0대 남았어요</span>
+      <div class="track"><div class="fill" id="goal-fill"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="caption" id="caption" hidden></div>
+
+<div class="demo">
+  <span>데모 · 다른 드론은 시뮬레이션</span>
+  <label for="demo-count" style="display:flex;gap:6px;align-items:center">접속자
+    <select id="demo-count">
+      <option value="320">320</option>
+      <option value="1284" selected>1,284</option>
+      <option value="5432">5,432</option>
+      <option value="10240">10,240</option>
+    </select>
+  </label>
+</div>
+
+<div class="bar" id="bar">
+  <button type="button" id="btn-launch" class="primary">내 드론 띄우기</button>
+  <button type="button" id="btn-invite">친구 부르기</button>
+  <button type="button" id="btn-shop">꾸미기 · 명당</button>
+  <button type="button" id="btn-preview">지금 쇼 미리보기</button>
+</div>
+
+<!-- Onboarding -->
+<div class="sheet" id="onboard" role="dialog" aria-modal="true" aria-labelledby="ob-title">
+  <div class="card">
+    <h2 id="ob-title">오늘 밤, 당신은 드론 한 대예요</h2>
+    <p>소원을 한 줄 적어 하늘에 띄워 보세요. 정각이 되면 모든 드론이 모여 하나의 그림이 돼요.</p>
+    <p id="ob-pair" hidden></p>
+    <div class="namechip">
+      <span>내 드론 · <strong id="ob-name">졸린 반딧불 #4821</strong></span>
+      <button type="button" class="link" id="ob-rename">다른 이름</button>
+    </div>
+    <label for="ob-wish">한 줄 소원 (선택)
+      <input type="text" id="ob-wish" maxlength="30" placeholder="예: 이번 주도 무사히">
+    </label>
+    <button type="button" class="cta" id="ob-go">하늘로 띄우기</button>
+    <button type="button" class="ghost" id="ob-skip">그냥 구경할게요</button>
+  </div>
+</div>
+
+<!-- Shop -->
+<div class="sheet" id="shop" role="dialog" aria-modal="true" aria-labelledby="shop-title" hidden>
+  <div class="card">
+    <div class="head">
+      <h2 id="shop-title">꾸미기 · 명당</h2>
+      <button type="button" class="close" data-close="shop">닫기</button>
+    </div>
+    <p class="testnote">테스트 모드예요. 실제로 결제되지 않아요.</p>
+
+    <div class="item">
+      <h3>드론 색 바꾸기</h3>
+      <p>수천 대 사이에서도 내 불빛을 찾을 수 있어요.</p>
+      <div class="row">
+        <div class="swatches" id="swatches"></div>
+        <button type="button" class="buy" id="buy-color">1,000원</button>
+      </div>
+    </div>
+
+    <div class="item">
+      <h3 id="spot-title">명당 자리</h3>
+      <p id="spot-desc">다음 쇼에서 그림의 가장 중요한 자리가 돼요.</p>
+      <div class="row">
+        <span class="left" id="spot-left">이번 쇼 2자리 남음</span>
+        <button type="button" class="buy" id="buy-spot">5,000원</button>
+      </div>
+    </div>
+
+    <div class="item">
+      <h3>내 장면</h3>
+      <p>쇼 중간 7초 동안 하늘 전체가 내 메시지가 돼요. 생일, 응원, 고백에 써 보세요.</p>
+      <label for="scene-input">메시지 (10자 이내)
+        <input type="text" id="scene-input" maxlength="10" placeholder="예: 엄마 생일 축하해">
+      </label>
+      <div class="row">
+        <span class="left" id="scene-left">이번 쇼 3자리 중 1자리 남음</span>
+        <button type="button" class="buy" id="buy-scene">15,000원</button>
+      </div>
+      <p class="fine">실서비스에서는 검수를 거쳐 반영돼요.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Share -->
+<div class="sheet" id="share" role="dialog" aria-modal="true" aria-labelledby="share-title" hidden>
+  <div class="card">
+    <div class="head">
+      <h2 id="share-title">오늘의 하늘</h2>
+      <button type="button" class="close" data-close="share">닫기</button>
+    </div>
+    <img class="share-img" id="share-img" alt="오늘 쇼의 그림과 그 안의 내 드론 위치가 표시된 공유 카드">
+    <p>이미지를 길게 누르거나 오른쪽 클릭해서 저장한 뒤 스토리에 올려 보세요.</p>
+    <button type="button" class="cta" id="share-invite">친구 부르는 링크 복사</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden><span id="toast-text"></span><button type="button" id="toast-btn" hidden></button></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- config ---------- */
+  var DEMO = true;
+  var SHOW_EVERY_MIN = 3;          // demo cadence; the real service runs once at 22:00
+  var MAX_VISUAL = 4000;           // more people than this share dots
+  var COLORS = ['#fff1d2', '#9ec5ff', '#ff9ec9', '#8ff0cf', '#ffcf6b'];
+  var COLOR_NAMES = ['기본', '하늘', '벚꽃', '민트', '금빛'];
+  var ADJ = ['졸린', '수줍은', '용감한', '배고픈', '반짝이는', '느긋한', '설레는', '씩씩한', '조용한', '포근한', '꿈꾸는', '부지런한'];
+  var NOUN = ['반딧불', '별똥별', '부엉이', '고래', '토끼', '구름', '등불', '참새', '달팽이', '여우', '고양이', '해파리'];
+  var WISHES = [
+    '수능 대박 나자', '엄마 수술 잘 끝나게 해주세요', '이번 주 금요일까지만 버티자', '우리 고양이 오래 살았으면',
+    '취업 제발', '내일 발표 안 떨게', '다이어트 이번엔 진짜', '야근 그만하고 싶다', '보고 싶다',
+    '올해 안에 이사 성공', '합격했다고 말하고 싶어요', '그냥 오늘 잘 자고 싶다', '다들 아프지 말자',
+    '면접 붙게 해주세요', '이번 달 월세 무사히', '친구랑 화해하고 싶어', '내년엔 덜 불안하기를'
+  ];
+  var DEMO_SCENES = ['수능 대박', '엄마 생일 축하해', '우리 결혼해요', '다들 수고했어'];
+  var SHAPES = {
+    star:      { label: '별',       became: '별이 됐어요',            spot: [400, 235], spotLabel: '별의 한가운데',   spotTopic: '별의 한가운데는',   draw: drawStar },
+    heart:     { label: '하트',     became: '하트가 됐어요',          spot: [400, 232], spotLabel: '하트의 한가운데', spotTopic: '하트의 한가운데는', draw: drawHeart },
+    whale:     { label: '고래',     became: '고래가 됐어요',          spot: [195, 225], spotLabel: '고래의 눈',       spotTopic: '고래의 눈은',       draw: drawWhale },
+    whaleMoon: { label: '달과 고래', became: '달빛 아래 고래가 됐어요', spot: [195, 225], spotLabel: '고래의 눈',       spotTopic: '고래의 눈은',       draw: drawWhaleMoon }
+  };
+  var MILESTONES = [{ at: 0, key: 'star' }, { at: 1000, key: 'heart' }, { at: 5000, key: 'whale' }, { at: 10000, key: 'whaleMoon' }];
+
+  /* ---------- utils ---------- */
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var rand = Math.random;
+  function pick(arr) { return arr[Math.floor(rand() * arr.length)]; }
+  function fmt(n) { return n.toLocaleString('ko-KR'); }
+  function $(id) { return document.getElementById(id); }
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function newName() {
+    var num = 1000 + Math.floor(rand() * 9000);
+    return { name: pick(ADJ) + ' ' + pick(NOUN) + ' #' + num, num: num };
+  }
+  function simInfo(i) {
+    var r = mulberry32(i * 9973 + 17);
+    var name = ADJ[Math.floor(r() * ADJ.length)] + ' ' + NOUN[Math.floor(r() * NOUN.length)] + ' #' + (1000 + Math.floor(r() * 9000));
+    var wish = r() < 0.65 ? WISHES[Math.floor(r() * WISHES.length)] : '';
+    return { name: name, wish: wish };
+  }
+
+  /* ---------- shapes (drawn on an 800x450 mask) ---------- */
+  function drawStar(g) {
+    g.beginPath();
+    for (var k = 0; k < 10; k++) {
+      var r = k % 2 ? 82 : 205, a = -Math.PI / 2 + k * Math.PI / 5;
+      g.lineTo(400 + r * Math.cos(a), 245 + r * Math.sin(a));
+    }
+    g.closePath(); g.fill();
+    hole(g, 400, 235, 13);
+  }
+  function drawHeart(g) {
+    g.beginPath();
+    for (var k = 0; k <= 200; k++) {
+      var t = k / 200 * Math.PI * 2;
+      var x = 16 * Math.pow(Math.sin(t), 3);
+      var y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+      g.lineTo(400 + x * 12.5, 215 - y * 12.5);
+    }
+    g.closePath(); g.fill();
+    hole(g, 400, 232, 13);
+  }
+  function drawWhale(g) {
+    g.beginPath(); g.ellipse(380, 250, 250, 100, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(220, 235, 105, 95, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.moveTo(600, 212); g.quadraticCurveTo(680, 228, 715, 232); g.lineTo(715, 262); g.quadraticCurveTo(680, 270, 600, 300); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(712, 247); g.quadraticCurveTo(735, 190, 785, 165); g.quadraticCurveTo(772, 225, 742, 247); g.quadraticCurveTo(772, 272, 785, 330); g.quadraticCurveTo(735, 305, 712, 247); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(330, 322); g.quadraticCurveTo(350, 400, 430, 405); g.quadraticCurveTo(395, 360, 400, 322); g.closePath(); g.fill();
+    [[215, 98, 9], [195, 72, 8], [237, 72, 8], [180, 50, 7], [252, 50, 7], [216, 42, 6]].forEach(function (c) {
+      g.beginPath(); g.arc(c[0], c[1], c[2], 0, Math.PI * 2); g.fill();
+    });
+    g.save();
+    g.globalCompositeOperation = 'destination-out';
+    g.lineWidth = 5; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(122, 268); g.quadraticCurveTo(200, 290, 292, 272); g.stroke();
+    g.restore();
+    hole(g, 195, 225, 13);
+  }
+  function drawWhaleMoon(g) {
+    g.save(); g.translate(-20, 30); g.scale(0.92, 0.92); drawWhale(g); g.restore();
+    g.beginPath(); g.arc(690, 85, 58, 0, Math.PI * 2); g.fill();
+    hole(g, 718, 68, 52);
+  }
+  function hole(g, x, y, r) {
+    g.save(); g.globalCompositeOperation = 'destination-out';
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.restore();
+  }
+  function textDraw(txt) {
+    return function (g) {
+      var size = 230;
+      g.font = '900 ' + size + 'px "Noto Sans KR", sans-serif';
+      var w = g.measureText(txt).width;
+      if (w > 740) { size = Math.floor(size * 740 / w); g.font = '900 ' + size + 'px "Noto Sans KR", sans-serif'; }
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(txt, 400, 235);
+    };
+  }
+
+  var maskCache = {};
+  function sampleMask(cacheKey, drawFn, n) {
+    var key = cacheKey + ':' + n;
+    if (maskCache[key]) return maskCache[key];
+    var w = 800, h = 450;
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var g = c.getContext('2d', { willReadFrequently: true });
+    g.fillStyle = '#fff';
+    drawFn(g);
+    var data = g.getImageData(0, 0, w, h).data;
+    var area = 0, x, y;
+    for (y = 0; y < h; y += 2) for (x = 0; x < w; x += 2) if (data[(y * w + x) * 4 + 3] > 128) area += 4;
+    var out = new Float32Array(Math.max(n, 1) * 2);
+    if (!area || n <= 0) return out;
+    var step = Math.max(1.2, Math.sqrt(area / (n * 0.866)));
+    var pts = [];
+    for (var tries = 0; tries < 10; tries++) {
+      pts = [];
+      var row = 0;
+      for (y = step / 2; y < h; y += step * 0.866, row++) {
+        var off = (row % 2) * step / 2;
+        for (x = step / 2 + off; x < w; x += step) {
+          if (data[((y | 0) * w + (x | 0)) * 4 + 3] > 128) pts.push(x, y);
+        }
+      }
+      if (pts.length / 2 >= n) break;
+      step *= 0.9;
+    }
+    var m = pts.length / 2, r = mulberry32(n * 7 + 13), i;
+    if (m >= n) {
+      var idx = new Uint32Array(m);
+      for (i = 0; i < m; i++) idx[i] = i;
+      for (i = 0; i < n; i++) { var j = i + Math.floor(r() * (m - i)); var t = idx[i]; idx[i] = idx[j]; idx[j] = t; }
+      for (i = 0; i < n; i++) { out[2 * i] = pts[2 * idx[i]]; out[2 * i + 1] = pts[2 * idx[i] + 1]; }
+    } else {
+      for (i = 0; i < n; i++) { var k = i % m; out[2 * i] = pts[2 * k] + (r() - 0.5) * 3; out[2 * i + 1] = pts[2 * k + 1] + (r() - 0.5) * 3; }
+    }
+    maskCache[key] = out;
+    return out;
+  }
+
+  /* ---------- state ---------- */
+  var canvas = $('sky'), ctx = canvas.getContext('2d');
+  var bg = document.createElement('canvas');
+  var W = 0, H = 0, dpr = 1;
+  var CAP = MAX_VISUAL + 2;
+  var X = new Float32Array(CAP), Y = new Float32Array(CAP), BX = new Float32Array(CAP), BY = new Float32Array(CAP);
+  var PH = new Float32Array(CAP), SP = new Float32Array(CAP), MX = new Float32Array(CAP), MY = new Float32Array(CAP);
+  var TX = new Float32Array(CAP), TY = new Float32Array(CAP);
+  var COL = new Uint8Array(CAP);
+  var count = 1284, N = 0;
+
+  var first = newName();
+  var me = { launched: false, name: first.name, num: first.num, wish: '', color: 0, spot: false, scene: '' };
+  var pairNum = null;
+  var m = /^#pair-(\d{4})$/.exec(location.hash || '');
+  if (m) pairNum = m[1];
+
+  var mode = 'free';                 // free | gather | hold | scene | disperse
+  var showT0 = 0, showKey = 'star', scene = null, snap = null, phaseDone = {};
+  var nextShowAt = 0;
+  var spotsLeft = 2;
+
+  /* ---------- drones ---------- */
+  function initDrone(i, fromBottom) {
+    // soft cloud: denser in the middle, thinning toward the edges
+    var soft = rand() < 0.55;
+    var gx = soft ? (rand() + rand() + rand() - 1.5) / 1.5 : rand() * 2 - 1;
+    var gy = soft ? (rand() + rand() + rand() - 1.5) / 1.5 : rand() * 2 - 1;
+    BX[i] = W * (0.5 + gx * 0.47);
+    BY[i] = H * (0.45 + gy * 0.32);
+    X[i] = BX[i];
+    Y[i] = fromBottom ? H + 12 : BY[i];
+    PH[i] = rand() * Math.PI * 2;
+    SP[i] = 0.7 + rand() * 0.9;
+    var c = rand();
+    COL[i] = c < 0.93 ? 0 : 1 + Math.floor(rand() * 3);
+  }
+  function setVisualCount(fromBottom) {
+    var target = Math.min(count, MAX_VISUAL) + 1;     // index 0 is me
+    if (target > N) for (var i = N; i < target; i++) initDrone(i, fromBottom && N > 0);
+    N = target;
+    if (pairNum && N > 1) COL[1] = 0;
+  }
+
+  /* ---------- layout & background ---------- */
+  function resize() {
+    var oldW = W || 1, oldH = H || 1;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    if (N) {
+      var sx = W / oldW, sy = H / oldH;
+      for (var i = 0; i < N; i++) { BX[i] *= sx; BY[i] *= sy; X[i] *= sx; Y[i] *= sy; }
+      if (mode !== 'free') mapTargets();
+    }
+    buildBg();
+  }
+  function buildBg() {
+    bg.width = Math.round(W * dpr); bg.height = Math.round(H * dpr);
+    var g = bg.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var gr = g.createLinearGradient(0, 0, 0, H);
+    gr.addColorStop(0, '#04071a'); gr.addColorStop(0.55, '#0c1434'); gr.addColorStop(1, '#1d2752');
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    var r = mulberry32(7);
+    for (var i = 0; i < 260; i++) {
+      g.fillStyle = 'rgba(255,255,255,' + (0.15 + r() * 0.5).toFixed(2) + ')';
+      var s = r() < 0.9 ? 1 : 1.6;
+      g.fillRect(r() * W, r() * H * 0.85, s, s);
+    }
+    var x = 0;
+    while (x < W) {
+      var bw = 26 + r() * 70, bh = 24 + r() * Math.min(110, H * 0.14);
+      g.fillStyle = '#050916';
+      g.fillRect(x, H - bh, bw, bh);
+      for (var wy = H - bh + 8; wy < H - 6; wy += 11) for (var wx = x + 6; wx < x + bw - 6; wx += 10) {
+        if (r() < 0.16) { g.fillStyle = 'rgba(255,207,107,' + (0.25 + r() * 0.45).toFixed(2) + ')'; g.fillRect(wx, wy, 3, 4); }
+      }
+      x += bw + 1;
+    }
+  }
+  var sprites = COLORS.map(function (c) {
+    var s = document.createElement('canvas'); s.width = s.height = 32;
+    var g = s.getContext('2d');
+    var gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.18, c); gr.addColorStop(0.45, c + '55'); gr.addColorStop(1, c + '00');
+    g.fillStyle = gr; g.fillRect(0, 0, 32, 32);
+    return s;
+  });
+
+  function layout() {
+    var s = Math.min(W * 0.92 / 800, H * 0.58 / 450);
+    return { s: s, cx: W / 2, cy: H * 0.5 };
+  }
+  function mapTargets() {
+    var L = layout();
+    for (var i = 0; i < N; i++) { TX[i] = L.cx + (MX[i] - 400) * L.s; TY[i] = L.cy + (MY[i] - 225) * L.s; }
+  }
+
+  /* ---------- show ---------- */
+  function currentShapeKey() {
+    var key = 'star';
+    MILESTONES.forEach(function (ms) { if (count >= ms.at) key = ms.key; });
+    return key;
+  }
+  function nextMilestone() {
+    for (var i = 0; i < MILESTONES.length; i++) if (count < MILESTONES[i].at) return MILESTONES[i];
+    return null;
+  }
+  function assign(points, useSpot, spot) {
+    var drones = [];
+    for (var i = 0; i < N; i++) {
+      if (i === 0 && (!me.launched || useSpot)) continue;
+      drones.push(i);
+    }
+    var n = points.length / 2;
+    var order = [];
+    for (var k = 0; k < n; k++) order.push(k);
+    order.sort(function (a, b) { return points[2 * a] - points[2 * b]; });
+    drones.sort(function (a, b) { return X[a] - X[b]; });
+    for (k = 0; k < drones.length; k++) {
+      var p = order[Math.min(k, n - 1)];
+      MX[drones[k]] = points[2 * p]; MY[drones[k]] = points[2 * p + 1];
+    }
+    if (useSpot) { MX[0] = spot[0]; MY[0] = spot[1]; }
+    if (!me.launched) { MX[0] = 400; MY[0] = 600; }
+    mapTargets();
+  }
+  function startShow() {
+    if (mode !== 'free') return;
+    showKey = currentShapeKey();
+    var shape = SHAPES[showKey];
+    var useSpot = me.launched && me.spot;
+    var n = N - 1 - (useSpot ? 0 : (me.launched ? -1 : 0));
+    assign(sampleMask(showKey, shape.draw, n), useSpot, shape.spot);
+    scene = me.launched && me.scene
+      ? { text: me.scene, from: me.name, mine: true }
+      : { text: pick(DEMO_SCENES), from: simInfo(Math.floor(rand() * 5000) + 2).name, mine: false };
+    mode = 'gather';
+    phaseDone = {};
+    showT0 = performance.now() / 1000;
+    clearBubbles();
+    hideTip();
+    setCaption('모두 모이는 중…', '');
+    nextShowAt = computeNext();
+  }
+  function updateShow(t) {
+    if (mode === 'free') return;
+    var el = t - showT0;
+    var shape = SHAPES[showKey];
+    if (el >= 4 && !phaseDone.hold) {
+      phaseDone.hold = true; mode = 'hold';
+      snap = { key: showKey, count: count, spot: me.launched && me.spot, launched: me.launched, n: N, mx: MX.slice(0, N), my: MY.slice(0, N), col: COL.slice(0, N) };
+      setCaption('오늘의 그림 · ' + shape.label, fmt(count) + '대가 함께 만들었어요');
+    }
+    if (el >= 11 && !phaseDone.scene) {
+      phaseDone.scene = true; mode = 'scene';
+      var n = N - (me.launched ? 0 : 1);
+      assign(sampleMask('text:' + scene.text, textDraw(scene.text), n), false);
+      setCaption(scene.mine ? '내 장면이 하늘에 떴어요' : '누군가 띄운 장면', scene.mine ? '모두가 지금 이 하늘을 보고 있어요' : scene.from + ' 님의 장면 · 15,000원');
+    }
+    if (el >= 18 && !phaseDone.disperse) {
+      phaseDone.disperse = true; mode = 'disperse';
+      setCaption('', '');
+    }
+    if (el >= 21 && !phaseDone.end) {
+      phaseDone.end = true; mode = 'free';
+      if (me.spot) { me.spot = false; spotsLeft = 2; }
+      if (me.scene) me.scene = '';
+      refreshShop();
+      if (snap && snap.launched) toast('오늘의 공유 카드가 준비됐어요', '보기', openShare);
+    }
+  }
+  function computeNext() {
+    var p = SHOW_EVERY_MIN * 60000;
+    return Math.ceil((Date.now() + 25000) / p) * p;
+  }
+
+  /* ---------- frame ---------- */
+  var last = performance.now();
+  function frame(now) {
+    var t = now / 1000;
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (mode === 'free' && Date.now() >= nextShowAt) startShow();
+    updateShow(t);
+    var free = mode === 'free' || mode === 'disperse';
+    var ax = reduced ? 4 : 16, ay = reduced ? 3 : 10;
+    for (var i = 0; i < N; i++) {
+      var tx, ty, k;
+      if (free) {
+        tx = BX[i] + Math.sin(t * 0.35 * SP[i] + PH[i]) * ax;
+        ty = BY[i] + Math.cos(t * 0.3 * SP[i] + PH[i] * 1.3) * ay;
+        k = mode === 'disperse' ? 0.9 : 1.3;
+      } else {
+        tx = TX[i] + Math.sin(t * 2 + PH[i]) * 0.6;
+        ty = TY[i] + Math.cos(t * 1.7 + PH[i]) * 0.6;
+        k = 1.6;
+      }
+      var f = Math.min(1, dt * k * SP[i] * (reduced ? 3 : 1));
+      X[i] += (tx - X[i]) * f; Y[i] += (ty - Y[i]) * f;
+    }
+    draw(t);
+    requestAnimationFrame(frame);
+  }
+  function draw(t) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(bg, 0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+    var vis = Math.max(1, N - 1), s = Math.max(3, Math.min(8, Math.sqrt(W * H / vis) * 0.2));
+    if (mode !== 'free' && mode !== 'disperse') s *= 0.9;
+    for (var i = 1; i < N; i++) ctx.drawImage(sprites[COL[i]], X[i] - s, Y[i] - s, 2 * s, 2 * s);
+    ctx.globalCompositeOperation = 'source-over';
+    if (pairNum && N > 1) ring(X[1], Y[1], 11, '#9ec5ff', true, '친구 #' + pairNum);
+    if (me.launched) {
+      var col = me.spot && mode !== 'free' ? 4 : me.color;
+      var ms = 13;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.drawImage(sprites[col], X[0] - ms, Y[0] - ms, 2 * ms, 2 * ms);
+      ctx.globalCompositeOperation = 'source-over';
+      ring(X[0], Y[0], 12 + Math.sin(t * 3) * 2, '#ffcf6b', false, mode === 'free' ? '나' : '');
+    }
+  }
+  function ring(x, y, r, color, dashed, label) {
+    ctx.save();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.9;
+    if (dashed) ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+    if (label) {
+      ctx.setLineDash([]);
+      ctx.font = '700 12px "Noto Sans KR", sans-serif';
+      ctx.textAlign = 'center'; ctx.fillStyle = color;
+      ctx.fillText(label, x, y - r - 6);
+    }
+    ctx.restore();
+  }
+
+  /* ---------- HUD ---------- */
+  var capEl = $('caption');
+  function setCaption(a, b) {
+    if (!a) { capEl.hidden = true; return; }
+    capEl.hidden = false;
+    capEl.innerHTML = '';
+    capEl.appendChild(document.createTextNode(a));
+    if (b) { var sm = document.createElement('small'); sm.textContent = b; capEl.appendChild(sm); }
+  }
+  function updateHud() {
+    $('count').textContent = fmt(count);
+    var nx = $('next');
+    if (mode !== 'free') nx.innerHTML = '<b>정각 쇼 진행 중</b>';
+    else {
+      var left = Math.max(0, Math.round((nextShowAt - Date.now()) / 1000));
+      var mm = String(Math.floor(left / 60)).padStart(2, '0'), ss = String(left % 60).padStart(2, '0');
+      nx.innerHTML = '다음 정각 쇼까지 <b>' + mm + ':' + ss + '</b>';
+    }
+    var nm = nextMilestone(), cur = SHAPES[currentShapeKey()];
+    if (nm) {
+      var prevAt = 0;
+      MILESTONES.forEach(function (ms) { if (ms.at <= count) prevAt = ms.at; });
+      $('goal-text').textContent = '지금은 ' + cur.label + ' · ' + SHAPES[nm.key].label + '까지 ' + fmt(nm.at - count) + '대';
+      $('goal-fill').style.width = Math.min(100, (count - prevAt) / (nm.at - prevAt) * 100) + '%';
+    } else {
+      $('goal-text').textContent = '오늘 밤 최고 단계 · ' + cur.label;
+      $('goal-fill').style.width = '100%';
+    }
+  }
+
+  /* ---------- bubbles & tooltip ---------- */
+  var bubbles = [];
+  function clearBubbles() { bubbles.forEach(function (b) { b.remove(); }); bubbles = []; }
+  function spawnBubble() {
+    if (mode !== 'free' || N < 3 || document.hidden) return;
+    var i = 2 + Math.floor(rand() * (N - 2));
+    var info = simInfo(i);
+    if (!info.wish || Y[i] < 90 || Y[i] > H - 120) return;
+    var b = document.createElement('div');
+    b.className = 'bubble';
+    b.textContent = info.wish;
+    b.style.left = X[i] + 'px'; b.style.top = (Y[i] - 10) + 'px';
+    document.body.appendChild(b);
+    bubbles.push(b);
+    setTimeout(function () { b.remove(); bubbles = bubbles.filter(function (x) { return x !== b; }); }, 4500);
+    while (bubbles.length > 3) bubbles.shift().remove();
+  }
+  var tipEl = null, tipTimer = 0;
+  function hideTip() { if (tipEl) { tipEl.remove(); tipEl = null; } }
+  canvas.addEventListener('pointerdown', function (e) {
+    var best = -1, bd = 26 * 26;
+    for (var i = me.launched ? 0 : 1; i < N; i++) {
+      var dx = X[i] - e.clientX, dy = Y[i] - e.clientY, d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = i; }
+    }
+    hideTip();
+    if (best < 0) return;
+    var name, wish;
+    if (best === 0) { name = me.name + ' (나)'; wish = me.wish; }
+    else if (best === 1 && pairNum) { name = '친구 #' + pairNum; wish = simInfo(1).wish; }
+    else { var info = simInfo(best); name = info.name; wish = info.wish; }
+    tipEl = document.createElement('div');
+    tipEl.className = 'tip';
+    var b = document.createElement('b'); b.textContent = name; tipEl.appendChild(b);
+    tipEl.appendChild(document.createTextNode(wish || '소원 없이 구경 중'));
+    tipEl.style.left = X[best] + 'px'; tipEl.style.top = (Y[best] - 14) + 'px';
+    document.body.appendChild(tipEl);
+    clearTimeout(tipTimer); tipTimer = setTimeout(hideTip, 3000);
+  });
+
+  /* ---------- toast ---------- */
+  var toastTimer = 0;
+  function toast(text, btnLabel, onBtn) {
+    var el = $('toast'), btn = $('toast-btn');
+    $('toast-text').textContent = text;
+    if (btnLabel) { btn.hidden = false; btn.textContent = btnLabel; btn.onclick = function () { el.hidden = true; onBtn(); }; }
+    else btn.hidden = true;
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.hidden = true; }, btnLabel ? 9000 : 3500);
+  }
+
+  /* ---------- sheets ---------- */
+  function open(id) { $(id).hidden = false; var f = $(id).querySelector('button, input'); if (f) f.focus(); }
+  function close(id) { $(id).hidden = true; }
+  document.querySelectorAll('[data-close]').forEach(function (b) {
+    b.addEventListener('click', function () { close(b.getAttribute('data-close')); });
+  });
+  document.querySelectorAll('.sheet').forEach(function (s) {
+    s.addEventListener('click', function (e) { if (e.target === s && s.id !== 'onboard') s.hidden = true; });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') ['shop', 'share'].forEach(close);
+  });
+
+  // onboarding
+  $('ob-name').textContent = me.name;
+  if (pairNum) { $('ob-pair').hidden = false; $('ob-pair').textContent = '친구 #' + pairNum + '의 링크로 왔어요. 띄우면 친구 드론 옆에서 날아요.'; }
+  $('ob-rename').addEventListener('click', function () {
+    var n = newName(); me.name = n.name; me.num = n.num; $('ob-name').textContent = me.name;
+  });
+  $('ob-go').addEventListener('click', function () {
+    me.wish = $('ob-wish').value.trim();
+    launch();
+    close('onboard');
+  });
+  $('ob-skip').addEventListener('click', function () { close('onboard'); });
+  $('btn-launch').addEventListener('click', function () { if (!me.launched) open('onboard'); });
+
+  function launch() {
+    if (me.launched) return;
+    me.launched = true;
+    if (pairNum && N > 1) { BX[0] = BX[1] + 24; BY[0] = BY[1] + 6; }
+    else { BX[0] = W * (0.3 + rand() * 0.4); BY[0] = H * (0.3 + rand() * 0.3); }
+    X[0] = W / 2; Y[0] = H + 20; PH[0] = rand() * 6; SP[0] = 1;
+    COL[0] = me.color;
+    var btn = $('btn-launch');
+    btn.textContent = '내 드론 찾기';
+    btn.classList.remove('primary');
+    btn.addEventListener('click', function () {
+      toast('금빛 고리가 내 드론이에요 · ' + me.name);
+    });
+    count += 1; setVisualCount(false);
+    var left = Math.max(0, Math.round((nextShowAt - Date.now()) / 1000));
+    toast('띄웠어요! ' + Math.floor(left / 60) + '분 ' + (left % 60) + '초 뒤 정각 쇼에서 모두 모여요');
+  }
+
+  // invite
+  function inviteLink() { return location.href.split('#')[0] + '#pair-' + me.num; }
+  function copyInvite() {
+    if (!me.launched) { toast('먼저 내 드론을 띄워 주세요', '띄우기', function () { open('onboard'); }); return; }
+    var link = inviteLink();
+    var done = function () { toast('링크를 복사했어요. 친구가 들어오면 내 옆에서 날아요'); };
+    var fail = function () { toast('복사가 막혔어요. 링크: ' + link); };
+    try { navigator.clipboard.writeText(link).then(done, fail); } catch (e) { fail(); }
+  }
+  $('btn-invite').addEventListener('click', copyInvite);
+  $('share-invite').addEventListener('click', copyInvite);
+
+  // shop
+  var chosenColor = 1;
+  var sw = $('swatches');
+  COLORS.slice(1, 4).forEach(function (c, k) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'swatch'; b.style.background = c;
+    b.setAttribute('aria-label', COLOR_NAMES[k + 1]);
+    b.setAttribute('aria-pressed', k === 0 ? 'true' : 'false');
+    b.addEventListener('click', function () {
+      chosenColor = k + 1;
+      sw.querySelectorAll('.swatch').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      $('buy-color').disabled = me.color === chosenColor;
+      $('buy-color').textContent = me.color === chosenColor ? '적용됨' : '1,000원';
+    });
+    sw.appendChild(b);
+  });
+  function needLaunch() {
+    if (me.launched) return false;
+    close('shop');
+    toast('먼저 내 드론을 띄워 주세요', '띄우기', function () { open('onboard'); });
+    return true;
+  }
+  function paid(text) { toast('테스트 결제 완료 · ' + text + ' (실제 돈은 나가지 않았어요)'); }
+  $('buy-color').addEventListener('click', function () {
+    if (needLaunch()) return;
+    me.color = chosenColor; COL[0] = chosenColor;
+    $('buy-color').disabled = true; $('buy-color').textContent = '적용됨';
+    paid(COLOR_NAMES[chosenColor] + ' 색 적용');
+  });
+  $('buy-spot').addEventListener('click', function () {
+    if (needLaunch() || me.spot) return;
+    me.spot = true; spotsLeft -= 1; refreshShop();
+    paid('다음 쇼에서 ' + SHAPES[currentShapeKey()].spotLabel + ' 자리를 맡아요');
+  });
+  $('buy-scene').addEventListener('click', function () {
+    if (needLaunch()) return;
+    var v = $('scene-input').value.trim();
+    if (!v) { $('scene-input').focus(); toast('하늘에 띄울 메시지를 적어 주세요'); return; }
+    me.scene = v; refreshShop();
+    paid('다음 쇼에서 "' + v + '" 메시지가 하늘에 떠요');
+  });
+  function refreshShop() {
+    var shape = SHAPES[currentShapeKey()];
+    $('spot-title').textContent = '명당 자리 · ' + shape.spotLabel;
+    $('spot-desc').textContent = '다음 쇼에서 ' + shape.spotTopic.replace(/[은는]$/, '') + ' 자리를 금빛으로 맡아요. 공유 카드에도 그렇게 적혀요.';
+    $('spot-left').textContent = me.spot ? '구매 완료 · 다음 쇼에 반영' : '이번 쇼 ' + spotsLeft + '자리 남음';
+    $('buy-spot').disabled = me.spot;
+    $('buy-spot').textContent = me.spot ? '적용됨' : '5,000원';
+    $('scene-left').textContent = me.scene ? '구매 완료 · "' + me.scene + '"' : '이번 쇼 3자리 중 1자리 남음';
+    $('buy-scene').disabled = !!me.scene;
+    $('buy-scene').textContent = me.scene ? '적용됨' : '15,000원';
+  }
+  $('btn-shop').addEventListener('click', function () { refreshShop(); open('shop'); });
+  $('btn-preview').addEventListener('click', function () {
+    if (mode !== 'free') { toast('이미 쇼가 진행 중이에요'); return; }
+    startShow();
+  });
+
+  // demo crowd
+  $('demo-count').addEventListener('change', function (e) {
+    count = parseInt(e.target.value, 10) + (me.launched ? 1 : 0);
+    if (mode === 'free') applyCount();
+    refreshShop();
+  });
+  function applyCount() {
+    var target = Math.min(count, MAX_VISUAL) + 1;
+    if (target < N) N = Math.max(target, 2);
+    else setVisualCount(true);
+  }
+
+  /* ---------- share card ---------- */
+  function openShare() {
+    if (!snap) return;
+    var shape = SHAPES[snap.key];
+    var go = function () {
+      var c = document.createElement('canvas'); c.width = 1080; c.height = 1920;
+      var g = c.getContext('2d');
+      var gr = g.createLinearGradient(0, 0, 0, 1920);
+      gr.addColorStop(0, '#04071a'); gr.addColorStop(0.6, '#0e1738'); gr.addColorStop(1, '#222d5c');
+      g.fillStyle = gr; g.fillRect(0, 0, 1080, 1920);
+      var r = mulberry32(3);
+      for (var i = 0; i < 320; i++) { g.fillStyle = 'rgba(255,255,255,' + (0.1 + r() * 0.4).toFixed(2) + ')'; g.fillRect(r() * 1080, r() * 1920, 2, 2); }
+      g.fillStyle = '#eef1fa'; g.textAlign = 'center';
+      g.font = '700 64px "Gowun Batang", serif'; g.fillText('하늘한칸', 540, 190);
+      var d = new Date();
+      g.font = '400 34px "Noto Sans KR", sans-serif'; g.fillStyle = '#a3adc8';
+      g.fillText(d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0') + ' 밤의 정각 쇼', 540, 250);
+      var sc = 1.25, ox = 540, oy = 820, ds = snap.n > 2500 ? 7 : snap.n > 900 ? 9 : 12;
+      g.globalCompositeOperation = 'lighter';
+      for (i = 1; i < snap.n; i++) g.drawImage(sprites[snap.col[i]], ox + (snap.mx[i] - 400) * sc - ds, oy + (snap.my[i] - 225) * sc - ds, ds * 2, ds * 2);
+      g.globalCompositeOperation = 'source-over';
+      var px = ox + (snap.mx[0] - 400) * sc, py = oy + (snap.my[0] - 225) * sc;
+      g.drawImage(sprites[snap.spot ? 4 : me.color], px - 22, py - 22, 44, 44);
+      g.strokeStyle = '#ffcf6b'; g.lineWidth = 4;
+      g.beginPath(); g.arc(px, py, 30, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = '#ffcf6b'; g.font = '700 36px "Noto Sans KR", sans-serif';
+      g.fillText('나', px, py - 44);
+      g.fillStyle = '#eef1fa'; g.font = '700 76px "Gowun Batang", serif';
+      g.fillText(snap.spot ? shape.spotTopic + ' 나였어요' : fmt(snap.count) + '대 중 하나였어요', 540, 1360);
+      g.font = '400 44px "Noto Sans KR", sans-serif'; g.fillStyle = '#c9d0e6';
+      g.fillText('오늘 밤, 우리가 모여 ' + shape.became, 540, 1450);
+      g.font = '500 36px "Noto Sans KR", sans-serif'; g.fillStyle = '#ffcf6b';
+      g.fillText(me.name, 540, 1560);
+      g.font = '400 32px "Noto Sans KR", sans-serif'; g.fillStyle = '#a3adc8';
+      g.fillText('매일 밤 10시 · 나도 한 칸 띄우러 가기', 540, 1800);
+      $('share-img').src = c.toDataURL('image/png');
+      open('share');
+    };
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(go, go); else go();
+  }
+
+  /* ---------- boot ---------- */
+  resize();
+  setVisualCount(false);
+  nextShowAt = computeNext();
+  window.addEventListener('resize', resize);
+  setInterval(updateHud, 250);
+  setInterval(spawnBubble, 2200);
+  setInterval(function () {
+    if (!DEMO || mode !== 'free') return;
+    var base = parseInt($('demo-count').value, 10) + (me.launched ? 1 : 0);
+    count = Math.max(10, count + Math.round(rand() * 9 - 3));
+    if (Math.abs(count - base) > base * 0.05) count = base;
+    applyCount();
+  }, 2000);
+  updateHud();
+  refreshShop();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
