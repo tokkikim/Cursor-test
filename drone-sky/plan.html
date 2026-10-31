@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>하늘한칸 쇼 기획안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: one reading column for a planning doc; the cue sheet and the motion demo are allowed to be wider. Single night theme to match the product. */
+:root {
+  --bg: #070a16;
+  --surface: #0f1426;
+  --ink: #e9edf7;
+  --muted: #9aa4bf;
+  --line: #222a44;
+  --lantern: #ffcf6b;
+  --sky: #9ec5ff;
+  --font-display: "Gowun Batang", "AppleMyungjo", serif;
+  --font-body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.75; }
+main { max-width: 960px; margin: 0 auto; padding: 52px 20px 80px; display: grid; gap: 64px; }
+.col { max-width: 720px; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; line-height: 1.35; text-wrap: balance; }
+h1 { font-size: 2.2rem; }
+h2 { font-size: 1.55rem; display: flex; gap: 12px; align-items: baseline; }
+h2 .n { font-family: var(--font-mono); font-size: 0.85rem; color: var(--lantern); }
+h3 { font-size: 1.1rem; }
+p { margin: 0; }
+section, header { display: grid; gap: 16px; }
+.lead { font-size: 1.12rem; color: var(--muted); max-width: 60ch; }
+.meta { font-size: 0.85rem; color: var(--muted); }
+.concept {
+  border-left: 3px solid var(--lantern);
+  padding: 6px 0 6px 18px;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  max-width: 34ch;
+}
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: grid; gap: 6px; align-content: start; }
+.card .k { font-size: 0.8rem; color: var(--lantern); font-weight: 700; }
+.card p { color: var(--muted); font-size: 0.93rem; }
+ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+li { max-width: 64ch; }
+code, .mono { font-family: var(--font-mono); font-size: 0.9em; }
+
+.wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 820px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 0.8rem; color: var(--muted); font-weight: 500; background: var(--surface); position: sticky; top: 0; }
+td.t { font-family: var(--font-mono); color: var(--lantern); white-space: nowrap; font-variant-numeric: tabular-nums; }
+td.cap { font-family: var(--font-display); }
+tr.act td { background: #141a33; font-weight: 700; color: var(--sky); font-family: var(--font-body); }
+tr.act td span { color: var(--muted); font-weight: 400; margin-left: 8px; }
+.tag { display: inline-block; font-size: 0.72rem; border: 1px solid var(--lantern); color: var(--lantern); border-radius: 999px; padding: 0 8px; margin: 2px 4px 0 0; white-space: nowrap; }
+.tag.light { border-color: var(--sky); color: var(--sky); }
+
+.bar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); font-size: 0.78rem; }
+.bar div { display: grid; place-items: center; color: #0b0f1e; font-weight: 700; white-space: nowrap; overflow: hidden; }
+.legend { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+
+.spec td:first-child { white-space: nowrap; }
+.spec td.now { color: #ff9a8a; }
+.spec td.real { color: #9be3b8; }
+
+.demo { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.demo figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
+.demo canvas { width: 100%; height: auto; aspect-ratio: 3 / 2; display: block; border-radius: 8px; background: #03050c; }
+.demo figcaption { font-size: 0.85rem; color: var(--muted); }
+.demo figcaption b { color: var(--ink); }
+.demo .speed { font-family: var(--font-mono); font-size: 0.8rem; color: var(--lantern); }
+
+.ask { background: var(--surface); border: 1px solid var(--lantern); border-radius: 12px; padding: 18px 20px; display: grid; gap: 10px; }
+.ask ol { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; }
+footer { font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 18px; }
+@media (max-width: 560px) { h1 { font-size: 1.8rem; } .concept { font-size: 1.15rem; } }
+</style>
+</head>
+<body>
+<main>
+
+<header class="col">
+  <p class="meta">하늘한칸 · 쇼 기획안 v1 · 2026-10-31</p>
+  <h1>매일 밤 10시, 13분의 하늘</h1>
+  <p class="lead">지금 시제품은 2분짜리 장면 모음이에요. 이 기획안은 배경과 이야기를 정하고, 13분 동안 지루하지 않게 이어지는 큐시트, 실제 드론과 같은 움직임 기준을 정리해요.</p>
+  <p class="concept">오늘 하루를 마친 사람들이 불빛 하나씩 모여, 서로를 위로하는 13분.</p>
+</header>
+
+<section aria-labelledby="s1">
+  <h2 id="s1"><span class="n">01</span>배경</h2>
+  <div class="grid3">
+    <div class="card">
+      <span class="k">장소</span>
+      <h3>가상의 항구 도시 "윤슬만"</h3>
+      <p>바다 위로 현수교가 걸린 만(灣). 관객은 해변에 앉아 바다 위 하늘을 올려다봐요. 실제 지명을 쓰지 않아 어느 지역 사람이든 자기 바다처럼 느낄 수 있어요. 윤슬은 물 위에 반짝이는 빛을 뜻해요.</p>
+    </div>
+    <div class="card">
+      <span class="k">시간과 날씨</span>
+      <h3>매일 밤 10시, 오늘의 날씨 그대로</h3>
+      <p>실제 날짜와 계절을 따라가요. 겨울엔 입김 같은 안개와 눈, 비 오는 날엔 젖은 바다에 더 길게 번지는 반사. 매일 같은 쇼라도 매일 다른 하늘이 돼요.</p>
+    </div>
+    <div class="card">
+      <span class="k">화자</span>
+      <h3>말을 거는 건 "밤하늘"</h3>
+      <p>사회자나 캐릭터 없이, 자막이 밤하늘의 목소리로 짧게 말을 걸어요. 다정하지만 담백하게. 설교하지 않고, 한 화면에 한 문장만.</p>
+    </div>
+    <div class="card">
+      <span class="k">주인공</span>
+      <h3>참가자 한 명 한 명</h3>
+      <p>쇼는 각자의 화면에서 그려져요. 그래서 수천 명이 같은 쇼를 보면서도, 모두가 "남겨진 불빛 하나가 나"인 순간을 동시에 가질 수 있어요.</p>
+    </div>
+    <div class="card">
+      <span class="k">사람들이 오는 이유</span>
+      <h3>하루를 닫는 의식</h3>
+      <p>자기 전 13분, 아무 생각 없이 바라보고, 소원 하나 띄우고, "오늘도 수고했어요"를 듣고 잠드는 습관. 매일 같은 시간이라는 점이 핵심이에요.</p>
+    </div>
+    <div class="card">
+      <span class="k">이야기 뼈대</span>
+      <h3>하루를 되감는 4막</h3>
+      <p>오늘 하루(아침 → 저녁) → 흔들렸던 순간 → 지금 여기 모인 우리 → 내일. 누구나 겪은 하루라서 설명이 없어도 따라와요.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="s2">
+  <h2 id="s2"><span class="n">02</span>13분 흐름 한눈에</h2>
+  <div class="bar" role="img" aria-label="프롤로그 1분 40초, 1막 오늘 2분 50초, 2막 흔들림 2분 10초, 3막 우리 3분 20초, 4막 내일 3분 30초">
+    <div style="flex:100;background:#9aa4bf">점등</div>
+    <div style="flex:170;background:#ffcf6b">1막 오늘</div>
+    <div style="flex:130;background:#9ec5ff">2막 흔들림</div>
+    <div style="flex:200;background:#ff9ec9">3막 우리</div>
+    <div style="flex:210;background:#8ff0cf">4막 내일 · 착륙</div>
+  </div>
+  <div class="legend"><span>0:00</span><span>1:40</span><span>4:30</span><span>6:40</span><span>10:00</span><span>13:30</span></div>
+  <p class="col">감정 곡선은 <b>잔잔함 → 공감 → 가라앉음 → 가장 조용한 순간(불빛 하나) → 가장 화려한 순간(불꽃) → 따뜻한 마무리</b>예요. 가장 조용한 장면 바로 뒤에 가장 화려한 장면을 두어 대비로 몰입을 살려요.</p>
+</section>
+
+<section aria-labelledby="s3">
+  <h2 id="s3"><span class="n">03</span>큐시트</h2>
+  <p class="col">각 장면은 <b>전환 10~25초 + 유지 15~40초</b>로 실제 드론쇼 속도에 맞췄어요. <span class="tag">참여</span>는 참가자 참여나 수익 지점, <span class="tag light">빛 효과</span>는 드론은 거의 멈춰 있고 불빛 순서로 움직임을 만드는 장면이에요.</p>
+  <div class="wrap">
+    <table>
+      <thead><tr><th>시간</th><th>하늘에 그려지는 것</th><th>자막</th><th>음악</th><th>연출 포인트</th></tr></thead>
+      <tbody>
+        <tr class="act"><td colspan="5">프롤로그 · 점등<span>0:00–1:40</span></td></tr>
+        <tr><td class="t">0:00</td><td>바다 위 발사대, 다 함께 10초 카운트다운</td><td class="cap"></td><td>정적, 파도 소리</td><td>화면에 오늘 참가자 수 <span class="tag">참여</span></td></tr>
+        <tr><td class="t">0:10</td><td>층층이 수직 이륙 (약 50초)</td><td class="cap">오늘 하루, 어땠나요?</td><td>곡 1 · 피아노 솔로</td><td>상승 초속 2m, 불은 아직 희미하게</td></tr>
+        <tr><td class="t">1:00</td><td>거대한 빛의 커튼, 왼쪽부터 불이 켜짐</td><td class="cap">오늘 밤, 5,432개의 불빛이 모였어요</td><td>현악 패드 합류</td><td><span class="tag light">빛 효과</span> 점등 파도</td></tr>
+
+        <tr class="act"><td colspan="5">1막 · 오늘<span>1:40–4:30</span></td></tr>
+        <tr><td class="t">1:40</td><td>수평선 위로 떠오르는 해와 햇살</td><td class="cap">아침엔 알람과 싸웠고</td><td>곡 2 · 경쾌한 미디엄 템포</td><td>햇살이 박자마다 한 줄씩 켜짐</td></tr>
+        <tr><td class="t">2:20</td><td>달리는 지하철 옆모습</td><td class="cap">만원 지하철에 몸을 실었죠</td><td></td><td><span class="tag light">빛 효과</span> 창문 불빛이 흘러 달리는 것처럼</td></tr>
+        <tr><td class="t">3:00</td><td>김이 오르는 커피잔</td><td class="cap">식은 커피로 버틴 오후</td><td></td><td>김은 위로 흐르는 불빛</td></tr>
+        <tr><td class="t">3:40</td><td>커다란 시계, 바늘이 천천히 10시로</td><td class="cap">그리고 지금, 밤 10시</td><td>곡이 잦아듦</td><td>분침 회전은 초당 6도 이하</td></tr>
+
+        <tr class="act"><td colspan="5">2막 · 흔들림<span>4:30–6:40</span></td></tr>
+        <tr><td class="t">4:30</td><td>빗줄기와 우산 하나</td><td class="cap">비 오는 날도 있었고</td><td>곡 3 · 앰비언트, 빗소리</td><td><span class="tag light">빛 효과</span> 빗줄기가 위에서 아래로 떨어지는 불빛</td></tr>
+        <tr><td class="t">5:20</td><td>파도 위에서 흔들리는 종이배</td><td class="cap">흔들린 날도 있었지만</td><td></td><td>파도 곡면이 느리게 출렁임</td></tr>
+        <tr><td class="t">6:00</td><td>무지개, 그 아래 피어나는 꽃</td><td class="cap">그래도 꽃은 피었어요</td><td>곡이 밝아짐</td><td>꽃잎이 20초에 걸쳐 열림</td></tr>
+
+        <tr class="act"><td colspan="5">3막 · 우리<span>6:40–10:00</span></td></tr>
+        <tr><td class="t">6:40</td><td>오늘의 그림: 인원에 따라 별 · 하트 · 고래 · 달과 고래</td><td class="cap">오늘 밤, 우리가 모여 고래가 됐어요</td><td>곡 4 · 감성 발라드, 가장 큰 멜로디</td><td>고래가 하늘을 가로질러 천천히 헤엄 <span class="tag">참여</span> 명당 자리 금빛</td></tr>
+        <tr><td class="t">7:40</td><td>참가자 소원 3개, 하나씩 글자로</td><td class="cap">오늘 밤, 누군가의 소원</td><td>피아노만 남음</td><td>무료 소원 중 추첨, 검수 통과분 <span class="tag">참여</span></td></tr>
+        <tr><td class="t">8:40</td><td>"내 마음을 하늘에" 메시지 2~3개</td><td class="cap">○○ 님이 보낸 마음</td><td></td><td>유료, 회당 자리 제한 <span class="tag">참여</span></td></tr>
+        <tr><td class="t">9:20</td><td>모든 불이 꺼지고 내 불빛 하나만 남음 (20초)</td><td class="cap">이 불빛 하나가 당신이에요</td><td>무음에 가까운 피아노 한 음</td><td>쇼 전체에서 가장 조용한 순간</td></tr>
+        <tr><td class="t">9:40</td><td>내 주변부터 하나둘 다시 켜짐 (20초)</td><td class="cap">그리고, 혼자가 아니에요</td><td>현악이 천천히 차오름</td><td><span class="tag light">빛 효과</span> 내 위치에서 퍼지는 원</td></tr>
+
+        <tr class="act"><td colspan="5">4막 · 내일<span>10:00–13:30</span></td></tr>
+        <tr><td class="t">10:00</td><td>오늘 밤의 별자리, 별끼리 선이 이어짐</td><td class="cap">내일은 조금 더 가벼워지길</td><td>곡 5 · 업템포 피날레 시작</td><td>협찬 장면 1개 들어갈 자리 <span class="tag">참여</span></td></tr>
+        <tr><td class="t">10:50</td><td>빛 불꽃 세 발</td><td class="cap"></td><td>가장 큰 드롭</td><td><span class="tag light">빛 효과</span> 드론은 구 모양으로 멈춰 있고 빛만 바깥으로 터짐</td></tr>
+        <tr><td class="t">11:30</td><td>"오늘도 수고했어요"</td><td class="cap">모두에게, 그리고 나에게</td><td>멜로디 다시</td><td>30초 유지, 공유 카드 촬영</td></tr>
+        <tr><td class="t">12:00</td><td>"내일 밤 10시" + 오늘의 참가자 수</td><td class="cap">내일 밤 10시에 또 만나요</td><td>곡이 잦아듦</td><td>친구 부르기 안내 <span class="tag">참여</span></td></tr>
+        <tr><td class="t">12:20</td><td>층층이 착륙, 하나씩 불이 꺼짐 (약 70초)</td><td class="cap"></td><td>피아노로 끝</td><td>하강 초속 1.5m. 끝나면 공유 카드</td></tr>
+        <tr><td class="t">13:30</td><td>종료, 대기실로</td><td class="cap"></td><td>대기실 음악</td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="s4">
+  <h2 id="s4"><span class="n">04</span>실제 드론처럼 움직이게</h2>
+  <p class="col">그림 폭을 실제 드론쇼 규모인 약 220m로 환산하면, 지금 시제품의 드론은 초속 30~40m로 날아요. 실제 드론쇼는 보통 초속 3~6m 안팎이라고 알려져 있어요. 아래 두 화면을 나란히 보면 차이가 바로 느껴져요.</p>
+  <div class="demo">
+    <figure>
+      <canvas id="d-now" width="360" height="240" aria-label="지금 시제품 속도로 드론 300대가 모양을 바꾸는 모습"></canvas>
+      <figcaption><b>지금 시제품</b> · 전환 4초, 직선 거리 순서가 아닌 짝짓기 <span class="speed" id="v-now"></span></figcaption>
+    </figure>
+    <figure>
+      <canvas id="d-real" width="360" height="240" aria-label="실제 드론 속도로 드론 300대가 모양을 바꾸는 모습"></canvas>
+      <figcaption><b>바꿀 방식</b> · 최고 초속 5m, 부드럽게 출발하고 멈춤, 가까운 자리끼리 짝짓기, 모두 동시에 도착 <span class="speed" id="v-real"></span></figcaption>
+    </figure>
+  </div>
+  <div class="wrap">
+    <table class="spec">
+      <thead><tr><th>항목</th><th>지금 시제품</th><th>바꿀 기준</th><th>이유</th></tr></thead>
+      <tbody>
+        <tr><td>이동 속도</td><td class="now">초속 30~40m</td><td class="real">최고 초속 5m</td><td>실제 쇼 드론의 일반적인 이동 속도대</td></tr>
+        <tr><td>출발과 정지</td><td class="now">곡선 보간</td><td class="real">가속도 초당 2m 이하로 부드럽게</td><td>실제 기체는 순간적으로 멈추거나 출발하지 못함</td></tr>
+        <tr><td>상승 · 하강</td><td class="now">약 6초</td><td class="real">상승 초속 2m, 하강 초속 1.5m</td><td>이륙 50초, 착륙 70초 정도가 자연스러움</td></tr>
+        <tr><td>전환 시간</td><td class="now">2~6초</td><td class="real">10~25초</td><td>거리에 맞춰 계산하고, 모두 같은 순간에 도착</td></tr>
+        <tr><td>짝짓기</td><td class="now">왼쪽부터 순서대로</td><td class="real">가까운 자리끼리</td><td>멀리 가로지르는 드론이 줄어 전환이 짧고 깔끔해짐</td></tr>
+        <tr><td>회전</td><td class="now">초당 약 26도</td><td class="real">초당 6도 이하</td><td>큰 그림이 빨리 돌면 바깥쪽 드론 속도가 너무 빨라짐</td></tr>
+        <tr><td>드론 간격</td><td class="now">제한 없음</td><td class="real">최소 약 2m</td><td>실제 쇼의 안전 간격. 화면에서도 덩어리로 뭉치지 않음</td></tr>
+        <tr><td>빠른 효과</td><td class="now">드론이 직접 날아감</td><td class="real">드론은 멈추고 불빛으로</td><td>비, 불꽃, 지하철처럼 빠른 장면은 실제 쇼에서도 조명 순서로 표현</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="s5">
+  <h2 id="s5"><span class="n">05</span>음악</h2>
+  <p class="col">실제 노래를 쓰는 방법은 네 가지예요. 수천 명에게 동시에 들려주는 서비스라서, 어떤 곡이든 <b>서비스에서 틀어도 되는 권리</b>가 있어야 해요.</p>
+  <div class="wrap">
+    <table class="spec">
+      <thead><tr><th>방법</th><th>예</th><th>권리</th><th>비용 · 난이도</th></tr></thead>
+      <tbody>
+        <tr><td>저작권이 끝난 곡을 직접 편곡</td><td>아리랑, 드뷔시 「달빛」, 사티 「짐노페디 1번」, 파헬벨 「캐논」</td><td class="real">작곡 저작권 만료. 직접 연주·합성하면 녹음 권리 문제도 없음</td><td>무료. 시제품에 바로 넣을 수 있음</td></tr>
+        <tr><td>작곡 의뢰</td><td>"하늘한칸" 전용 곡 5개</td><td class="real">계약으로 서비스 사용권 확보</td><td>곡당 비용 발생. 서비스 정체성에 가장 좋음</td></tr>
+        <tr><td>음원 라이브러리 구독</td><td>상업용 배경음악 사이트</td><td>약관마다 다름. 웹 서비스 안에서 재생해도 되는지 꼭 확인</td><td>월 구독. 곡 선택 폭 넓음</td></tr>
+        <tr><td>유명 가요 · 팝</td><td>지금 인기 있는 노래</td><td class="now">저작권, 실연자, 음반 제작자 권리를 모두 따로 허락받아야 함</td><td>가장 비싸고 오래 걸림. 특별 회차용으로만 고려</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul class="col">
+  </ul>
+  <h3 class="col">누구나 아는 곡으로 짠 막별 선곡안</h3>
+  <p class="col">모두 작곡 저작권이 끝난 곡이에요. 남이 녹음한 음원은 그 녹음에 별도 권리가 있으니 쓰지 않고, 우리가 직접 편곡해서 연주(합성)해요.</p>
+  <div class="wrap">
+    <table class="spec">
+      <thead><tr><th>구간</th><th>곡</th><th>왜 이 곡인가</th></tr></thead>
+      <tbody>
+        <tr><td>프롤로그 · 점등</td><td>사티 「짐노페디 1번」</td><td>느린 피아노. 이륙의 고요함과 잘 맞고, 광고·영화에서 많이 들어 익숙해요.</td></tr>
+        <tr><td>1막 · 오늘</td><td>파헬벨 「캐논」</td><td>밝고 일상적인 반복 진행. 해돋이부터 시계까지 장면이 바뀌어도 흐름이 끊기지 않아요.</td></tr>
+        <tr><td>2막 · 흔들림</td><td>드뷔시 「달빛」</td><td>물결처럼 흔들리는 곡. 비와 파도, 종이배 장면에 어울려요.</td></tr>
+        <tr><td>3막 · 우리</td><td>「아리랑」</td><td>한국 사람이면 첫 음에서 바로 알아요. "불빛 하나" 장면은 피아노 한 줄로, 다시 켜질 때는 현악 합주로 크게.</td></tr>
+        <tr><td>4막 · 불꽃</td><td>베토벤 「환희의 송가」</td><td>가장 큰 클라이맥스. 불꽃 세 발을 곡의 정점에 맞춰요.</td></tr>
+        <tr><td>엔딩 · 착륙</td><td>「Auld Lang Syne」 (석별의 정)</td><td>헤어짐의 노래로 널리 알려진 선율. "내일 밤 또 만나요"와 착륙에 맞아요. 가사 없이 연주만.</td></tr>
+        <tr><td>특별 회차</td><td>「고요한 밤 거룩한 밤」, 「징글벨」</td><td>크리스마스 회차용.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul class="col">
+    <li><b>요즘 인기 가요를 쓰고 싶다면:</b> 작곡가·작사가 저작권, 가수·연주자 권리, 음반 제작사 권리를 모두 허락받아야 해요. 우리가 직접 연주해도 작곡 저작권 허락은 필요해요. 그래서 매일 쓰는 곡보다는 협찬과 함께하는 특별 회차에 어울려요.</li>
+    <li><b>제안:</b> 시제품은 저작권이 끝난 곡을 편곡해서 만들고, 실서비스는 전용 곡을 의뢰해요. 아리랑이나 「달빛」처럼 누구나 아는 선율은 처음 듣는 사람도 바로 감정이 따라와요.</li>
+    <li><b>내 음원으로 미리 보기:</b> 권리가 있는 음원 파일을 올리면, 그 곡에 맞춰 쇼가 펼쳐지도록 만들 수 있어요. 실제 드론쇼도 완성된 곡의 시간표에 맞춰 안무를 짜요.</li>
+    <li><b>막마다 다른 곡 5개</b>로 13분을 채워요. 피아노 솔로 → 경쾌한 곡 → 앰비언트 → 감성 발라드 → 피날레. 한 곡을 13분 반복하면 지루해지기 쉬워요.</li>
+    <li><b>장면 전환은 곡의 마디에 맞춰요.</b> 드론이 실제 속도로 느리게 움직이는 대신, 불빛의 깜빡임, 색 바뀜, 박동을 박자에 맞춰 리듬감을 살려요.</li>
+    <li><b>시제품:</b> 지금처럼 브라우저에서 직접 합성한 5곡. <b>실서비스:</b> 작곡 의뢰나 음원 라이선스를 권해요. 매일 듣는 곡이라 완성도가 체감 품질을 크게 좌우해요.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="s6">
+  <h2 id="s6"><span class="n">06</span>매일 오게 만드는 운영</h2>
+  <div class="grid3">
+    <div class="card"><span class="k">매일</span><h3>뼈대는 같고 하늘은 다르게</h3><p>소원, 메시지, 참가자 수, 오늘의 그림, 날씨가 매일 바뀌어요. 3막과 4막은 매일 새로워요.</p></div>
+    <div class="card"><span class="k">요일별</span><h3>1막만 갈아끼우기</h3><p>월요일은 "출근길", 금요일은 "불금", 일요일은 "내일 걱정". 1막 장면 4개만 바꾸면 돼요.</p></div>
+    <div class="card"><span class="k">특별 회차</span><h3>시즌 에피소드</h3><p>수능 전날 응원 회차, 크리스마스, 12월 31일 15분 카운트다운 특별판. 화제가 터지기 가장 좋은 날들이에요.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="s7">
+  <h2 id="s7"><span class="n">07</span>만드는 순서</h2>
+  <ol class="col">
+    <li><b>움직임 엔진 교체:</b> 속도·가속 제한, 가까운 자리 짝짓기, 동시 도착, 빛 효과 장면 지원</li>
+    <li><b>배경 "윤슬만":</b> 바다, 다리, 도시를 다듬고 날씨(비, 눈, 안개)를 추가</li>
+    <li><b>큐시트 장면 22개 제작:</b> 해, 지하철, 커피잔, 시계, 우산, 종이배, 무지개, 별자리 등</li>
+    <li><b>음악 5곡과 박자 맞춤</b></li>
+    <li><b>휴대폰 성능 맞춤:</b> 13분 동안 배터리와 발열을 견디도록</li>
+  </ol>
+</section>
+
+<section class="ask col" aria-labelledby="s8">
+  <h2 id="s8"><span class="n">08</span>정해 주셔야 할 것</h2>
+  <ol>
+    <li><b>배경:</b> 가상의 항구 "윤슬만"으로 갈까요? 한강 같은 실제 장소가 더 끌리시면 알려 주세요.</li>
+    <li><b>음악:</b> 위 선곡안(짐노페디 → 캐논 → 달빛 → 아리랑 → 환희의 송가 → 석별의 정)으로 시제품을 만들까요?</li>
+    <li><b>길이:</b> 약 13분 30초로 잡았어요. 10분 쪽으로 줄일지, 15분까지 늘릴지 정해 주세요.</li>
+    <li><b>이야기:</b> "하루를 되감는 4막"과 자막 말투가 괜찮은지, 빼거나 넣고 싶은 장면이 있는지 알려 주세요.</li>
+  </ol>
+</section>
+
+<footer>실제 드론쇼 수치는 업계에서 일반적으로 알려진 범위를 바탕으로 잡은 기준이에요. 실서비스에서 실제 드론과 연계한다면 운영사의 비행 기준에 맞춰 다시 조정해야 해요.</footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var N = 300, W = 360, H = 240, PX_PER_M = W / 220;     // canvas width = 220 m
+  function grid() { var o = []; for (var i = 0; i < N; i++) { var c = i % 20, r = Math.floor(i / 20); o.push([60 + c * 12.6, 40 + r * 11]); } return o; }
+  function heart() {
+    var o = [], k = 0;
+    while (o.length < N && k < 50000) {
+      k++;
+      var x = Math.random() * 2.4 - 1.2, y = Math.random() * 2.4 - 1.2;
+      var a = x * x + y * y - 1;
+      if (a * a * a - x * x * y * y * y <= 0) o.push([W / 2 + x * 78, H / 2 - y * 70 + 6]);
+    }
+    return o;
+  }
+  function ring() { var o = []; for (var i = 0; i < N; i++) { var a = i / N * Math.PI * 2, r = 70 + (i % 3) * 9; o.push([W / 2 + Math.cos(a) * r, H / 2 + Math.sin(a) * r]); } return o; }
+  var SHAPES = [grid(), heart(), ring()];
+
+  // locality-preserving pairing: sort both sets along a Morton (Z-order) curve
+  function morton(x, y) {
+    var xi = Math.max(0, Math.min(255, Math.floor(x / W * 255))), yi = Math.max(0, Math.min(255, Math.floor(y / H * 255))), z = 0;
+    for (var b = 0; b < 8; b++) z |= ((xi >> b) & 1) << (2 * b) | ((yi >> b) & 1) << (2 * b + 1);
+    return z;
+  }
+  function pairByX(from, to) {
+    var a = from.map(function (p, i) { return i; }).sort(function (i, j) { return from[i][0] - from[j][0]; });
+    var b = to.map(function (p, i) { return i; }).sort(function (i, j) { return to[i][0] - to[j][0]; });
+    var out = new Array(N); for (var k = 0; k < N; k++) out[a[k]] = to[b[k]]; return out;
+  }
+  function pairNear(from, to) {
+    var a = from.map(function (p, i) { return i; }).sort(function (i, j) { return morton(from[i][0], from[i][1]) - morton(from[j][0], from[j][1]); });
+    var b = to.map(function (p, i) { return i; }).sort(function (i, j) { return morton(to[i][0], to[i][1]) - morton(to[j][0], to[j][1]); });
+    var out = new Array(N); for (var k = 0; k < N; k++) out[a[k]] = to[b[k]]; return out;
+  }
+  function improve(from, to) {
+    // random pairwise swaps that shorten total flight (sum of squared distances)
+    function d2(a, b) { var x = a[0] - b[0], y = a[1] - b[1]; return x * x + y * y; }
+    for (var it = 0; it < 60000; it++) {
+      var i = Math.floor(Math.random() * N), j = Math.floor(Math.random() * N);
+      if (i === j) continue;
+      if (d2(from[i], to[j]) + d2(from[j], to[i]) < d2(from[i], to[i]) + d2(from[j], to[j])) { var t = to[i]; to[i] = to[j]; to[j] = t; }
+    }
+    return to;
+  }
+  var minJerk = function (u) { return u * u * u * (10 + u * (-15 + 6 * u)); };
+  var cubic = function (p) { return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; };
+
+  function Sim(id, label, realistic) {
+    var cv = document.getElementById(id), g = cv.getContext('2d');
+    var pos = SHAPES[0].map(function (p) { return p.slice(); });
+    var from, to, t0 = 0, T = 0, shape = 0, holdUntil = 0, peak = 0;
+    function plan(now) {
+      shape = (shape + 1) % SHAPES.length;
+      from = pos.map(function (p) { return p.slice(); });
+      to = realistic ? improve(from, pairNear(from, SHAPES[shape])) : pairByX(from, SHAPES[shape]);
+      var maxD = 0;
+      for (var i = 0; i < N; i++) maxD = Math.max(maxD, Math.hypot(to[i][0] - from[i][0], to[i][1] - from[i][1]));
+      if (realistic) {
+        var vmax = 5 * PX_PER_M;                          // 5 m/s in px/s
+        T = Math.max(8, 1.875 * maxD / vmax);             // min-jerk peak speed = 1.875 d / T
+      } else T = 4;
+      peak = (realistic ? 1.875 : 3) * maxD / T / PX_PER_M;
+      document.getElementById(label).textContent = '이번 전환 ' + T.toFixed(1) + '초 · 최고 초속 ' + peak.toFixed(1) + 'm';
+      t0 = now;
+    }
+    function step(now) {
+      if (!from) { if (now > holdUntil) plan(now); }
+      else {
+        var u = Math.min(1, (now - t0) / T), e = realistic ? minJerk(u) : cubic(u);
+        for (var i = 0; i < N; i++) { pos[i][0] = from[i][0] + (to[i][0] - from[i][0]) * e; pos[i][1] = from[i][1] + (to[i][1] - from[i][1]) * e; }
+        if (u >= 1) { from = null; holdUntil = now + (realistic ? 4 : 2); }
+      }
+      g.fillStyle = '#03050c'; g.fillRect(0, 0, W, H);
+      g.globalCompositeOperation = 'lighter';
+      for (var k = 0; k < N; k++) {
+        var p = pos[k];
+        g.fillStyle = 'rgba(255,207,107,0.18)'; g.beginPath(); g.arc(p[0], p[1], 3, 0, 6.283); g.fill();
+        g.fillStyle = 'rgba(255,240,210,0.95)'; g.fillRect(p[0] - 0.8, p[1] - 0.8, 1.6, 1.6);
+      }
+      g.globalCompositeOperation = 'source-over';
+      g.fillStyle = '#9aa4bf'; g.font = '11px "Noto Sans KR", sans-serif';
+      g.fillText('폭 220m', 8, H - 8);
+    }
+    return step;
+  }
+  var a = Sim('d-now', 'v-now', false), b = Sim('d-real', 'v-real', true);
+  function loop(ms) { var s = ms / 1000; a(s); b(s); requestAnimationFrame(loop); }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
